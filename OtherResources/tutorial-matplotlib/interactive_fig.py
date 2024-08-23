@@ -42,9 +42,9 @@ def on_key(event):
         fig.canvas.draw()
 
 
-rain = normalize_matrix(np.load('PR_2020.npy'))
-temp = normalize_matrix(np.load('TEMP2m_2020.npy'))
-wind = normalize_matrix(np.load('VU_2020_VV_2020.npy'))
+rain = normalize_matrix(np.load('OtherResources\\tutorial\\PR_2020.npy'))
+temp = normalize_matrix(np.load('OtherResources\\tutorial\\TEMP2m_2020.npy'))
+wind = normalize_matrix(np.load('OtherResources\\tutorial\\VU_2020_VV_2020.npy'))
 
 meteo = np.dstack((rain, temp, wind))
    

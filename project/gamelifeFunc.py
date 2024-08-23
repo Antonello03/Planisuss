@@ -12,11 +12,15 @@ def init_grid(N):
                        [255, 255, 255]])
     grid[1:4, 1:4] = glider
 
+    grid [30:33,30:33] = glider
+
     # Lightweight Spaceship (LWSS)
     lwss = np.array([[255, 255, 255, 255, 0],
                      [0, 0, 0, 0, 255],
                      [255, 0, 0, 0, 255],
                      [0, 255, 255, 255, 255]])
+    
+    grid[30:34, 5:10] = lwss
     grid[10:14, 10:15] = lwss
 
     return grid
@@ -42,10 +46,10 @@ def update(frameNum, img, grid, N):
     return img,
 
 # Parameters
-N = 50  # Grid size
+N = 100  # Grid size
 ON = 255  # Alive cell
 OFF = 0  # Dead cell
-UPDATE_INTERVAL = 0  # in milliseconds
+UPDATE_INTERVAL = 1  # in milliseconds
 grid = init_grid(N)
 
 # Create the plot

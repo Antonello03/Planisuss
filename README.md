@@ -1,2 +1,8 @@
 # Planisuss
-Programming project forUNIPV 1st yr
+
+Programming project for UNIPV 1st yr
+
+
+TODO:
+
+* [ ]
