@@ -5,6 +5,12 @@ from matplotlib.animation import FuncAnimation
 from world import Environment
 from planisuss_constants import *
 
+"""
+File that handles the visualization of the interface
+
+Maybe we can put even the following in a class?
+"""
+
 env = Environment()
 
 ON = 255
