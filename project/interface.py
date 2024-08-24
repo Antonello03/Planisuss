@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+
 from world import Environment
 from planisuss_constants import *
 
@@ -15,7 +16,7 @@ def update(frameNum, img):
     img.set_data(newGrid)
     return img,
 
-grid = env.getEnv()
+grid = env.getGrid()
 
 # Create the plot
 fig, ax = plt.subplots()
