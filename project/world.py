@@ -41,23 +41,13 @@ class Environment():
         self.grid = self.world.grid #redundancy to be removed
         return self.world.grid
     
-
 class WorldGrid():
     """
-    class that handles the creation of the islands, initial flora and fauna, and aquatic zones
-
-    its main attribute is grid
+    class that handles the creation of the islands, initial flora and fauna,
+    and aquatic zones its main attribute is grid
     """
-    def randomGrid(self, gridEL, percentage=0.5):
-        ''' Stupid fucntion tu generate ranom initial population'''
-        if random.random() < percentage:
-            return 255
-        else:
-            return 0
-    v_randomGrid = np.vectorize(randomGrid)
-
     def __fbmNoise(self, n, threshold = 0.4, seed = None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0):
-        """ Method to generate island like maps """
+        """ Method to generate island like maps. Returns a numpy grid of zeros and 255 """
         if seed is None:
             seed = random.randint(0, 100)
         grid = np.zeros((n, n))
@@ -79,28 +69,63 @@ class WorldGrid():
         min_val = np.min(grid)
         max_val = np.max(grid)
         grid = (grid - min_val) / (max_val - min_val)
-        print(grid)
-        grid = np.where(grid > threshold, 255, 0)
-        print(grid)
-        
+        grid = np.where(grid > threshold, 1, 0)
         return grid
 
-    def __init__(self, type = "fbm"):
-        self.grid = self.createWorld(type)
-        
+    def __init__(self, type = "fbm", threshold = 0.4):
+        self.grid = self.createWorld(type, threshold)
+
     # so that we can crate different types of initial setups
-    def createWorld(self, typology = "fbm"):
-        if typology == "random":
-            grid = np.zeros(shape=(NUMCELLS,NUMCELLS))
-            grid = self.v_randomGrid(self.grid, 0.3)
-            return grid
+    def createWorld(self, typology = "fbm", threshold = 0.4):
         
         if typology == "fbm":
-            grid = self.__fbmNoise(NUMCELLS)
+            grid = self.__fbmNoise(NUMCELLS, threshold)
+            grid = np.where(grid > threshold, LandCell(), WaterCelL())
             return grid
-
-        if typology == "type2":
-            pass
 
     def updateGrid(self, newGrid):
         self.grid = newGrid
+
+class Cell():
+    """
+    Each Grid unit is a cell. Cells contain several information about
+    the species that habits it, the amount of vegetation and so on
+    """
+
+    def __init__(self):
+        pass
+
+    def getCellType(self):
+        pass
+
+    def __repr__(self):
+        return "Cell"
+
+class WaterCelL(Cell):
+    """
+    WaterCells can't contain living being... for now...
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def getCellType(self):
+        return "water"
+    
+    def __repr__(self):
+        return "WaterCell"
+    
+class LandCell(Cell):
+    """
+    LandCells host life
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def getCellType(self):
+        return "land"
+    
+    def __repr__(self):
+        return "LandCell"
+    
