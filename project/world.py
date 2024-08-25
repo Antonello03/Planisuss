@@ -46,11 +46,13 @@ class WorldGrid():
     class that handles the creation of the islands, initial flora and fauna,
     and aquatic zones its main attribute is grid
     """
-    def __fbmNoise(self, n, threshold = 0.4, seed = None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0):
+    def __fbmNoise(self, n, threshold = 0.3, seed = None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=False):
         """ Method to generate island like maps. Returns a numpy grid of zeros and 255 """
         if seed is None:
             seed = random.randint(0, 100)
         grid = np.zeros((n, n))
+        center = n // 2
+        max_dist = center * np.sqrt(2)
         for i in range(n):
             for j in range(n):
                 x = i / scale
@@ -62,24 +64,34 @@ class WorldGrid():
                     fbm_value += amplitude * noise.pnoise2(x * frequency, y * frequency, base = seed)
                     amplitude *= persistence
                     frequency *= lacunarity
-                
+
                 grid[i][j] = fbm_value
 
         # Normalize the values between 0 and 1
         min_val = np.min(grid)
         max_val = np.max(grid)
         grid = (grid - min_val) / (max_val - min_val)
-        grid = np.where(grid > threshold, 1, 0)
+
+        if dynamic:
+          for i in range(n):
+              for j in range(n):
+                  distance = np.sqrt((i - center) ** 2 + (j - center) ** 2)
+                  distance_weight = distance / max_dist
+                  dynamic_treshold = threshold + (1 - threshold) * distance_weight
+                  # print(dynamic_treshold)
+                  grid[i][j] = 1 if grid[i][j] > dynamic_treshold else 0
+        else:
+          grid = np.where(grid > threshold, 1, 0)
         return grid
 
-    def __init__(self, type = "fbm", threshold = 0.4):
+    def __init__(self, type = "fbm", threshold = 0.2):
         self.grid = self.createWorld(type, threshold)
 
     # so that we can crate different types of initial setups
-    def createWorld(self, typology = "fbm", threshold = 0.4):
+    def createWorld(self, typology = "fbm", threshold = 0.2):
         
         if typology == "fbm":
-            grid = self.__fbmNoise(NUMCELLS, threshold)
+            grid = self.__fbmNoise(NUMCELLS, threshold, dynamic=True)
             grid = np.where(grid > threshold, LandCell(), WaterCelL())
             return grid
 
