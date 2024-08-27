@@ -1,5 +1,6 @@
 import random
 from planisuss_constants import *
+from creatures import *
 import numpy as np
 import noise
 
@@ -89,10 +90,14 @@ class WorldGrid():
 
     # so that we can crate different types of initial setups
     def createWorld(self, typology = "fbm", threshold = 0.2):
+        """
+        Initialize the world
+        Vegetob density starts at 26
+        """
         
         if typology == "fbm":
             grid = self.__fbmNoise(NUMCELLS, threshold, dynamic=True)
-            grid = np.where(grid > threshold, LandCell(), WaterCelL())
+            grid = np.where(grid > threshold, LandCell(Vegetob(density = 25)), WaterCelL())
             return grid
 
     def updateGrid(self, newGrid):
@@ -132,8 +137,21 @@ class LandCell(Cell):
     LandCells host life
     """
 
-    def __init__(self):
+    def __init__(self, vegetobPopulation: Vegetob):
         super().__init__()
+        self.vegetob = vegetobPopulation
+
+    def getVegetobDensity(self):
+        """Get Vegetob Density in the cell"""
+        return self.vegetob.density
+    
+    def growVegetob(self, times:int = 1):
+        """Grow the Vegetob population in the cell"""
+        self.vegetob.grow(times)
+
+    def reduceVegetob(self, amount:int = 5):
+        """apply grazing effects on the Vegetob population in the cell"""
+        self.vegetob.reduce(amount)
 
     def getCellType(self):
         return "land"
