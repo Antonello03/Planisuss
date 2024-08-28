@@ -17,7 +17,7 @@ Stefano Ferrari
 NUMDAYS = 100000     # Length of the simulation in days
 
 # geometry
-NUMCELLS = 100     # size of the (square) grid (NUMCELLS x NUMCELLS)
+NUMCELLS = 50     # size of the (square) grid (NUMCELLS x NUMCELLS)
 NUMCELLS_R = 1000    # number of rows of the (potentially non-square) grid
 NUMCELLS_C = 1000    # number of columns of the (potentially non-square) grid
 

@@ -47,7 +47,7 @@ class WorldGrid():
     class that handles the creation of the islands, initial flora and fauna,
     and aquatic zones its main attribute is grid
     """
-    def __fbmNoise(self, n, threshold = 0.3, seed = None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=False):
+    def __fbmNoise(self, n, threshold = 0.2, seed = None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=False):
         """ Method to generate island like maps. Returns a numpy grid of zeros and 255 """
         if seed is None:
             seed = random.randint(0, 100)
