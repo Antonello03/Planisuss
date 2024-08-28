@@ -96,8 +96,14 @@ class WorldGrid():
         """
         
         if typology == "fbm":
-            grid = self.__fbmNoise(NUMCELLS, threshold, dynamic=True)
-            grid = np.where(grid > threshold, LandCell(Vegetob(density = 25)), WaterCelL())
+            values_grid = self.__fbmNoise(NUMCELLS, threshold, dynamic=True)
+            grid = np.zeros((NUMCELLS, NUMCELLS), dtype=object)
+            for i in range(NUMCELLS):
+                for j in range(NUMCELLS):
+                    if values_grid[i][j] > threshold:
+                        grid[i][j] = LandCell((i, j), Vegetob(density=25))
+                    else:
+                        grid[i][j] = WaterCell((i, j))
             return grid
 
     def updateGrid(self, newGrid):
@@ -109,7 +115,8 @@ class Cell():
     the species that habits it, the amount of vegetation and so on
     """
 
-    def __init__(self):
+    def __init__(self, coordinates:tuple):
+        self.coords = coordinates
         pass
 
     def getCellType(self):
@@ -118,13 +125,13 @@ class Cell():
     def __repr__(self):
         return "Cell"
 
-class WaterCelL(Cell):
+class WaterCell(Cell):
     """
     WaterCells can't contain living being... for now...
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, coordinates:tuple):
+        super().__init__(coordinates = coordinates)
 
     def getCellType(self):
         return "water"
@@ -137,8 +144,8 @@ class LandCell(Cell):
     LandCells host life
     """
 
-    def __init__(self, vegetobPopulation: Vegetob):
-        super().__init__()
+    def __init__(self, coordinates:tuple, vegetobPopulation: Vegetob):
+        super().__init__(coordinates = coordinates)
         self.vegetob = vegetobPopulation
 
     def getVegetobDensity(self):
