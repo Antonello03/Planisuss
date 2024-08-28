@@ -54,9 +54,10 @@ class Interface():
             artist.remove()
         self.animal_artists.clear()
 
+        grid = self.env.getGrid() # I moved this so the method is called only once - Nello
         for i in range(self.grid.shape[0]):
             for j in range(self.grid.shape[1]):
-                cell = self.env.getGrid()[i, j]
+                cell = grid[i, j]
                 # print(cell)
                 if isinstance(cell, LandCell):
                     for _ in range(2):
