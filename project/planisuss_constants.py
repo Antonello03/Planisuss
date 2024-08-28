@@ -43,3 +43,7 @@ AGING_E = 1          # energy lost each month for Erbast
 AGING_C = 1          # energy lost each month for Carviz
 
 GROWING = 1          # Vegetob density that grows per day.
+
+# our constants
+
+MAX_GROWTH = 100
