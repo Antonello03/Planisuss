@@ -139,6 +139,7 @@ class Carviz(Animal): # TODO - what if we add a "hiding in tall gras" dynamic?
         super().__init__(coordinates, energy, lifetime, age, SocialAttitude)
 
     def rankMoves(self, neighborhood: 'NDArray'):
+        """Ranks the moves in the neighborhood based on desirability scores."""
 
         desirabilityScores = [[0,cell.coords] for cell in neighborhood] # at the beginnign all cells are equal
         # all possible cells evaluation
@@ -156,8 +157,6 @@ class Carviz(Animal): # TODO - what if we add a "hiding in tall gras" dynamic?
         desirabilityScores[presentIndex][1] = "stay"
         
         return sorted(desirabilityScores, key= lambda x : x[0], reverse = True)
-
-
 
     def __repr__(self):
         return "Carviz"
