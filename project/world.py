@@ -1,6 +1,6 @@
 import random
+from creatures import Vegetob, Erbast, Carviz, Animal
 from planisuss_constants import *
-from creatures import *
 import numpy as np
 import noise
 
@@ -17,7 +17,7 @@ class Environment():
         self.world = WorldGrid()
         self.grid = self.world.grid #redundancy to be removed
 
-    def getGrid(self):
+    def getGrid(self) -> 'WorldGrid':
         return self.world.grid
     
     def updateEnv(self):
@@ -101,7 +101,7 @@ class WorldGrid():
             for i in range(NUMCELLS):
                 for j in range(NUMCELLS):
                     if values_grid[i][j] > threshold:
-                        grid[i][j] = LandCell((i, j), Vegetob(density=25))
+                        grid[i][j] = LandCell((i, j), Vegetob(density=25 + random.randint(-10, 10)))
                     else:
                         grid[i][j] = WaterCell((i, j))
             return grid
@@ -147,6 +147,9 @@ class LandCell(Cell):
     def __init__(self, coordinates:tuple, vegetobPopulation: Vegetob):
         super().__init__(coordinates = coordinates)
         self.vegetob = vegetobPopulation
+        self.inhabitants = list()
+        self.numErbast = 0
+        self.numCarviz = 0
 
     def getVegetobDensity(self):
         """Get Vegetob Density in the cell"""
@@ -159,6 +162,15 @@ class LandCell(Cell):
     def reduceVegetob(self, amount:int = 5):
         """apply grazing effects on the Vegetob population in the cell"""
         self.vegetob.reduce(amount)
+
+    def addAnimal(self, animal:'Animal'):
+        # to add limitation on the amount of erbaz/carviz
+        # to add joining herd dynamics
+        self.inhabitants.append(animal)
+        if isinstance(animal, Erbast):
+            self.numErbast += 1
+        elif isinstance(animal, Carviz):
+            self.numCarviz += 1
 
     def getCellType(self):
         return "land"
