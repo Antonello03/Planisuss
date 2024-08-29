@@ -85,6 +85,8 @@ class Vegetob():
 class Erbast(Animal):
     """
     Herbivore dude eat grass and die
+
+    Erbasts are generally friendly, their socialAttitude score goes from low - 0 to high - 1
     """
 
     CARVIZ_DANGER = 0.75
@@ -102,28 +104,60 @@ class Erbast(Animal):
         This method calculates the desirability scores for each cell in the given neighborhood and returns a sorted list of pairs [value, ].
         """
         desirabilityScores = [[0,cell.coords] for cell in neighborhood] # at the beginnign all cells are equal
+        # all possible cells evaluation
         for i in range(len(neighborhood)):
             desirabilityScores[i][0] -= neighborhood[i].numCarviz * Erbast.CARVIZ_DANGER
             desirabilityScores[i][0] += neighborhood[i].numErbast * self.socialAttitude
             desirabilityScores[i][0] += neighborhood[i].getVegetobDensity() * Erbast.VEG_NEED
             desirabilityScores[i][0] = round(desirabilityScores[i][0], 2)
+
+        # Staying likability evaluation
         presentIndex =  len(desirabilityScores)//2
         desirabilityScores[presentIndex][0] += ((100 - self.energy)**Erbast.ENERGY_EXPONENT * Erbast.ENERGY_WEIGHT) - Erbast.ENERGY_WEIGHT2
         desirabilityScores[presentIndex][0] -= self.socialAttitude # remove self-counting
         desirabilityScores[presentIndex][0] = round(desirabilityScores[presentIndex][0], 2)
         desirabilityScores[presentIndex][1] = "stay"
+
         return sorted(desirabilityScores, key= lambda x : x[0], reverse = True)
 
     def __repr__(self):
         return "Erbast"
 
-class Carviz(Animal):
+class Carviz(Animal): # TODO - what if we add a "hiding in tall gras" dynamic?
     """
     Angry boy very hungry
+
+    Carvizes aren't as friendly as Erbasts, their social attitude score goes from 0 offensive to 1 friendly
     """
+    VEG_NEED = 0.005 # carvist do not need vegetob, but it makes sense for them to look for erbast in food rich zones
+    ERBAST_NEED = 1.2
+    ENERGY_WEIGHT = 0.1 # scales how much energy matters overall
+    ENERGY_WEIGHT2 = 0.8 # lower value -> more likely to stay even at high energy levels
+    ENERGY_EXPONENT = 0.65 # regulates how much the percentage of energy matters
 
     def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY_C, lifetime:int = MAX_LIFE_C, age:int = 0, SocialAttitude:float = 0.5):
         super().__init__(coordinates, energy, lifetime, age, SocialAttitude)
+
+    def rankMoves(self, neighborhood: 'NDArray'):
+
+        desirabilityScores = [[0,cell.coords] for cell in neighborhood] # at the beginnign all cells are equal
+        # all possible cells evaluation
+        for i in range(len(neighborhood)):
+            desirabilityScores[i][0] += neighborhood[i].numErbast * Carviz.ERBAST_NEED
+            desirabilityScores[i][0] += neighborhood[i].getVegetobDensity() * Carviz.VEG_NEED
+            desirabilityScores[i][0] += neighborhood[i].numCarviz * (self.socialAttitude - 0.5) # A carviz might want to stay alone
+            desirabilityScores[i][0] = round(desirabilityScores[i][0], 2)
+
+        # Staying likability evaluation - carviz are very unlikely to stay still, they're constantly looking for Erbasts
+        presentIndex =  len(desirabilityScores)//2
+        desirabilityScores[presentIndex][0] -= ((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT) #when the energy is lwo a prey must be found
+        desirabilityScores[presentIndex][0] -= (self.socialAttitude - 0.5) # remove self-counting
+        desirabilityScores[presentIndex][0] = round(desirabilityScores[presentIndex][0], 2)
+        desirabilityScores[presentIndex][1] = "stay"
+        
+        return sorted(desirabilityScores, key= lambda x : x[0], reverse = True)
+
+
 
     def __repr__(self):
         return "Carviz"

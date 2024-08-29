@@ -172,6 +172,15 @@ class LandCell(Cell):
         elif isinstance(animal, Carviz):
             self.numCarviz += 1
 
+    def getErbastList(self):
+        """Get a list of all Erbast inhabitants in the cell"""
+        return [erb for erb in self.inhabitants if isinstance(erb, Erbast)]
+
+    def getCarvizList(self):
+        """Get a list of all Carviz inhabitants in the cell"""
+        return [car for car in self.inhabitants if isinstance(car, Carviz)]
+
+
     def getCellType(self):
         return "land"
     
