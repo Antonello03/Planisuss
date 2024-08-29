@@ -99,7 +99,7 @@ class Erbast(Animal):
 
     def rankMoves(self, neighborhood:'NDArray'): # TODO - i could implement a logic where cells near a carviz are less likely and far from it are more likely
         """
-        This method calculates the desirability scores for each cell in the given neighborhood and returns the chosen move.
+        This method calculates the desirability scores for each cell in the given neighborhood and returns a sorted list of pairs [value, ].
         """
         desirabilityScores = [[0,cell.coords] for cell in neighborhood] # at the beginnign all cells are equal
         for i in range(len(neighborhood)):
@@ -109,8 +109,8 @@ class Erbast(Animal):
             desirabilityScores[i][0] = round(desirabilityScores[i][0], 2)
         presentIndex =  len(desirabilityScores)//2
         desirabilityScores[presentIndex][0] += ((100 - self.energy)**Erbast.ENERGY_EXPONENT * Erbast.ENERGY_WEIGHT) - Erbast.ENERGY_WEIGHT2
-        desirabilityScores[presentIndex][0] = round(desirabilityScores[presentIndex][0], 2)
         desirabilityScores[presentIndex][0] -= self.socialAttitude # remove self-counting
+        desirabilityScores[presentIndex][0] = round(desirabilityScores[presentIndex][0], 2)
         desirabilityScores[presentIndex][1] = "stay"
         return sorted(desirabilityScores, key= lambda x : x[0], reverse = True)
 

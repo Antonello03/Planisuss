@@ -8,7 +8,7 @@ environment = Environment()
 animation = Interface(env = environment)
 #animation.start()
 
-es = Erbast((25,25),energy=90)
+es = Erbast((25,25),energy=60) # declaring erbast like this doesn't add it to the grid
 grid = environment.getGrid()
 
 grid[25][26].addAnimal(Carviz((25,26)))
