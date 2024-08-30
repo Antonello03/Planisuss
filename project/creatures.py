@@ -5,7 +5,7 @@ class Species:
     def __init__(self):
         pass
 
-class Animal(Species):
+class Animal(Species): #TODO waterCell in getNeighborhood
 
     def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY, lifetime:int = MAX_LIFE, age:int = 0, SocialAttitude:float = 0.5, neighborhoodDistance = NEIGHBORHOOD):
         super().__init__()
@@ -49,7 +49,7 @@ class Animal(Species):
         #cands = np.delete(cands,len(cands)//2)
         return cands
         
-    def rankMoves(self, neighborhood:'NDArray'):
+    def rankMoves(self, worldGrid:'WorldGrid'):
         """Given an array of neighboring cells, evaluates the desired next move"""
         #each animal ranks the choices individually assigning them a desirability score from 0-1, then if the socialgroup decision is acceptable (scaled by the socialattitude) it is followed
         pass
@@ -89,7 +89,6 @@ class Vegetob():
 class Erbast(Animal):
     """
     Herbivore dude eat grass and die
-
     Erbasts are generally friendly, their socialAttitude score goes from low - 0 to high - 1
     """
     id = 0
@@ -136,7 +135,7 @@ class Erbast(Animal):
     def __repr__(self):
         return f"Erbast {self.id}"
 
-class Carviz(Animal): # TODO - what if we add a "hiding in tall gras" dynamic?
+class Carviz(Animal): # TODO - what if we add a "hiding in tall grass" dynamic?
     """
     Angry boy very hungry
 
@@ -193,7 +192,6 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
     def addComponent(self, animal:Animal):
         self.components.append(animal)
     
-
 class Herd(SocialGroup):
 
     def __init__(self, components):

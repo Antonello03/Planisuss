@@ -253,7 +253,6 @@ class LandCell(Cell):
         """Get a list of all Carviz inhabitants in the cell"""
         return [car for car in self.inhabitants if isinstance(car, Carviz)]
 
-
     def getCellType(self):
         return "land"
     
