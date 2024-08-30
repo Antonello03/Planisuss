@@ -6,6 +6,7 @@ class Species:
         pass
 
 class Animal(Species):
+
     def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY, lifetime:int = MAX_LIFE, age:int = 0, SocialAttitude:float = 0.5, neighborhoodDistance = NEIGHBORHOOD):
         super().__init__()
         self.coords = coordinates
@@ -16,6 +17,9 @@ class Animal(Species):
         self.alive = True
         self.neighborhoodDistance = neighborhoodDistance
         pass
+
+    def getCoords(self):
+        return self.coords
 
     def ageStep(self, days:int = 1):
         """Increase the age of the animal by the specified number of days"""
@@ -88,6 +92,7 @@ class Erbast(Animal):
 
     Erbasts are generally friendly, their socialAttitude score goes from low - 0 to high - 1
     """
+    id = 0
 
     CARVIZ_DANGER = 0.75
     VEG_NEED = 0.01
@@ -95,14 +100,16 @@ class Erbast(Animal):
     ENERGY_WEIGHT2 = 0.8 # lower value -> more likely to stay even at high energy levels
     ENERGY_EXPONENT = 0.8 # regulates how much the percentage of energy matters
 
-
     def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY_E, lifetime:int = MAX_LIFE_E, age:int = 0, SocialAttitude:float = 0.5):
         super().__init__(coordinates, energy, lifetime, age, SocialAttitude)
+        self.ID = Erbast.id
+        Erbast.id += 1
 
-    def rankMoves(self, neighborhood:'NDArray'): # TODO - i could implement a logic where cells near a carviz are less likely and far from it are more likely
+    def rankMoves(self, worldGrid:'WorldGrid'): # TODO - i could implement a logic where cells near a carviz are less likely and far from it are more likely
         """
         This method calculates the desirability scores for each cell in the given neighborhood and returns a sorted list of pairs [value, ].
         """
+        neighborhood = self.getNeighborhood(worldGrid)
         desirabilityScores = [[0,cell.coords] for cell in neighborhood] # at the beginnign all cells are equal
         # all possible cells evaluation
         for i in range(len(neighborhood)):
@@ -120,8 +127,14 @@ class Erbast(Animal):
 
         return sorted(desirabilityScores, key= lambda x : x[0], reverse = True)
 
+    def graze(self, grazingAmount): # Vegetob reduction should be handled by environment becaus of herds dynamics
+        if self.energy + grazingAmount <= MAX_ENERGY_E:
+            self.energy += grazingAmount
+        else:
+            self.energy = MAX_ENERGY_E
+        
     def __repr__(self):
-        return "Erbast"
+        return f"Erbast {self.id}"
 
 class Carviz(Animal): # TODO - what if we add a "hiding in tall gras" dynamic?
     """
@@ -129,6 +142,8 @@ class Carviz(Animal): # TODO - what if we add a "hiding in tall gras" dynamic?
 
     Carvizes aren't as friendly as Erbasts, their social attitude score goes from 0 offensive to 1 friendly
     """
+    id = 0
+
     VEG_NEED = 0.005 # carvist do not need vegetob, but it makes sense for them to look for erbast in food rich zones
     ERBAST_NEED = 1.2
     ENERGY_WEIGHT = 0.1 # scales how much energy matters overall
@@ -137,9 +152,12 @@ class Carviz(Animal): # TODO - what if we add a "hiding in tall gras" dynamic?
 
     def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY_C, lifetime:int = MAX_LIFE_C, age:int = 0, SocialAttitude:float = 0.5):
         super().__init__(coordinates, energy, lifetime, age, SocialAttitude)
+        self.id = Carviz.id
+        Carviz.id += 1
 
-    def rankMoves(self, neighborhood: 'NDArray'):
+    def rankMoves(self, worldGrid: 'WorldGrid'):
         """Ranks the moves in the neighborhood based on desirability scores."""
+        neighborhood = self.getNeighborhood(worldGrid)
 
         desirabilityScores = [[0,cell.coords] for cell in neighborhood] # at the beginnign all cells are equal
         # all possible cells evaluation
@@ -159,18 +177,22 @@ class Carviz(Animal): # TODO - what if we add a "hiding in tall gras" dynamic?
         return sorted(desirabilityScores, key= lambda x : x[0], reverse = True)
 
     def __repr__(self):
-        return "Carviz"
+        return f"Carviz {self.id}"
 
-class SocialGroup:
+class SocialGroup: # TODO what particular information may be stored by a socialGroup?
     """
     Holds knowledge about the environment
     """
 
-    def __init__(self, components):
+    def __init__(self, components:list[Animal]):
         self.components = components
 
     def getComponents(self):
         return self.components
+    
+    def addComponent(self, animal:Animal):
+        self.components.append(animal)
+    
 
 class Herd(SocialGroup):
 

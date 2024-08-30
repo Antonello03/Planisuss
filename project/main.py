@@ -9,16 +9,21 @@ animation = Interface(env = environment)
 #animation.start()
 
 grid = environment.getGrid()
-grid[25][25].addAnimal(Erbast((25,25),energy=60))
+animals = [Erbast((25,25),energy=100),
+           Carviz((24,26)),
+           Carviz((25,27)),
+           Carviz((25,26), energy=20)]
 
-grid[25][26].addAnimal(Carviz((25,26), energy=20))
-grid[24][26].addAnimal(Carviz((24,26)))
-grid[25][27].addAnimal(Carviz((25,27)))
+for a in animals:
+    environment.addAnimal(a)
 
-grid[24][25].addAnimal(Erbast((24,25)))
+es = animals[0]
 
-es = grid[25][26].getCarvizList()[0]
+for i in range(10):
+    print(f"day {i}:")
+    print(f"{es} is in {es.getCoords()} and it desired to move in")
+    pprint(es.rankMoves(grid)[:3])
+    environment.nextDay()
 
-neighbours = es.getNeighborhood(grid)
-moves = es.rankMoves(neighbours)
-pprint(moves)
+
+#I'm having some problems in holding references to certain animals -> I'll fix tomorrow

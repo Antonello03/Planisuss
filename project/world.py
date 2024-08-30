@@ -15,32 +15,94 @@ class Environment():
     """
     def __init__(self):
         self.world = WorldGrid()
-        self.grid = self.world.grid #redundancy to be removed
+        self.creatures = {
+            "Erbast" : [],
+            "Carviz" : []
+        }
+        self.totErbast = 0
+        self.totCarviz = 0
 
     def getGrid(self) -> 'WorldGrid':
         return self.world.grid
     
-    def updateEnv(self):
-        N = NUMCELLS
-        # Evolution of the world logic
+    def updateGrid(self, newGrid):
+        self.world.updateGrid(newGrid)
+
+    def addAnimal(self, animal:Animal):
+
+        """
+        My approach where each landCell know its inhabitants,
+        each creature know its coordinates and the whole environment knows everything
+        need a bit more care when managing inhabitants
+        """
+        if not isinstance(animal, Animal):
+            raise TypeError(f"{animal} is not an Animal")
+        
+        x,y = animal.getCoords()
+
+        if isinstance(animal, Erbast):
+            self.creatures["Erbast"].append(animal) # add to env
+            self.getGrid()[x][y].addAnimal(animal) # add to cell
+            self.totErbast += 1
+
+        elif isinstance(animal, Carviz):
+            self.creatures["Carviz"].append(animal)
+            self.getGrid()[x][y].addAnimal(animal)
+            self.totCarviz += 1
+
+    def removeAnimal(self, animal:Animal):
+        """Remove an animal from the creatures list"""
+
+        if not isinstance(animal, Animal):
+            raise TypeError(f"{animal} is not an Animal")
+        
+        x,y = animal.getCoords()
+
+        if isinstance(animal, Erbast):
+            if animal in self.creatures["Erbast"]:
+                self.getGrid()[x][y].removeAnimal(animal)
+                self.creatures["Erbast"].remove(animal)
+                self.totErbast -= 1
+                return True
+        elif isinstance(animal, Carviz):
+            if animal in self.creatures["Carviz"]:
+                self.getGrid()[x][y].removeAnimal(animal)
+                self.creatures["Carviz"].remove(animal)
+                self.totCarviz -= 1
+                return True
+        raise Exception(f"animal: {animal}, at coords {animal.getCoords()}, is not present in any cell or is not a Erbast/Carviz")
+
+    def moveAnimal(self, animal:Animal, newCoords:tuple):
+        """given new coords, move the animal if possible and change its coords"""
+        if not isinstance(animal, Animal):
+            raise TypeError(f"{animal} is not an Animal")
+
+        self.removeAnimal(animal)
+        animal.coords = newCoords
+        self.addAnimal(animal)
+
+    def nextDay(self):
+        """The days phase happens one after the other until the new day"""
+
         newGrid = self.world.grid.copy()
-        for i in range(N):
-            for j in range(N):
-                total = int((self.grid[i, (j-1)%N] + self.grid[i, (j+1)%N] +
-                            self.grid[(i-1)%N, j] + self.grid[(i+1)%N, j] +
-                            self.grid[(i-1)%N, (j-1)%N] + self.grid[(i-1)%N, (j+1)%N] +
-                            self.grid[(i+1)%N, (j-1)%N] + self.grid[(i+1)%N, (j+1)%N]) / 255)
-                if self.grid[i, j]  == ON:
-                    if (total < 2) or (total > 3):
-                        newGrid[i, j] = OFF
-                else:
-                    if total == 3:
-                        newGrid[i, j] = ON
+        cells = newGrid.reshape(-1)
+        landCells = [landC for landC in cells if isinstance(landC,LandCell)]
+        # 1 - GROWING
+        for el in landCells:
+            el.growVegetob()
+
+        # 2 MOVING
+
+        # Erbast move
+        for erbast in self.creatures["Erbast"]:
+            nextCellCoords = erbast.rankMoves(newGrid)[0][1] # take best choice coords TODO- at the end the logic will be more complex
+            if nextCellCoords == 'stay': # TODO - other stuff
+                continue
+            self.moveAnimal(erbast,nextCellCoords)
 
         # Updating the WorldGrid
-        self.world.updateGrid(newGrid)
-        self.grid = self.world.grid #redundancy to be removed
-        return self.world.grid
+        self.world.updateGrid(newGrid) #redundancy to be removed
+        return self.getGrid()
     
 class WorldGrid():
     """
@@ -164,6 +226,8 @@ class LandCell(Cell):
         self.vegetob.reduce(amount)
 
     def addAnimal(self, animal:'Animal'):
+        """Remove an animal from the inhabitants list"""
+        # TODO
         # to add limitation on the amount of erbaz/carviz
         # to add joining herd dynamics
         self.inhabitants.append(animal)
@@ -171,6 +235,15 @@ class LandCell(Cell):
             self.numErbast += 1
         elif isinstance(animal, Carviz):
             self.numCarviz += 1
+
+    def removeAnimal(self, animal:'Animal'):
+        """Remove an animal from the inhabitants list"""
+        if animal in self.inhabitants:
+            self.inhabitants.remove(animal)
+            if isinstance(animal, Erbast):
+                self.numErbast -= 1
+            elif isinstance(animal, Carviz):
+                self.numCarviz -= 1
 
     def getErbastList(self):
         """Get a list of all Erbast inhabitants in the cell"""
