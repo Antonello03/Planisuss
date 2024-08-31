@@ -8,6 +8,9 @@ from world import *
 from planisuss_constants import *
 from PIL import Image
 from scipy.ndimage import gaussian_filter
+from creatures import *
+import random
+from matplotlib.gridspec import GridSpec
 
 
 class Interface():
@@ -24,13 +27,19 @@ class Interface():
         
         self.env = env
         self.grid = self.gridToRGB(env.getGrid())
-        self.fig, self.ax = plt.subplots(figsize=(10, 10))
-        self.ax.set_aspect('equal', adjustable='box')
-
-        # better window appearance
-        self.ax.axis('off')
-        self.fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-        self.fig.canvas.manager.set_window_title("Planisuss World")
+        self.fig_map = plt.figure(figsize=(10,10))
+        self.gs_map = GridSpec(2, 1, height_ratios=[8, 1], figure=self.fig_map)
+        
+        self.ax_plot = self.fig_map.add_subplot(self.gs_map[0, 0])
+        self.ax_plot.set_aspect('equal', adjustable='box')
+        self.ax_plot.axis('off')
+        self.fig_map.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        self.fig_map.canvas.manager.set_window_title("Planisuss World")
+        
+        self. gs_controls = GridSpec(1, 3, figure=self.fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
+        self.ax_pause = self.fig_map.add_subplot(self.gs_controls[0, 0])
+        self.ax_play = self.fig_map.add_subplot(self.gs_controls[0, 1])
+        self.ax_x2 = self.fig_map.add_subplot(self.gs_controls[0, 2])
 
         # try:
             # erbast_img = Image.open("C://Users//stefa//OneDrive - Università di Pavia//Downloads//erbastN.jpg")
@@ -43,7 +52,9 @@ class Interface():
         self.info_box = None
         self.expand = False
 
-        self.fig.canvas.mpl_connect('button_press_event', self.onclick)
+        self.anim_running = False
+        self.ani = None
+        self.fig_map.canvas.mpl_connect('button_press_event', self.onclick)
 
     def update(self, frameNum, img):
         """Update the grid for animation."""
@@ -66,20 +77,36 @@ class Interface():
                         shift_y = np.random.uniform(-0.1, 0.1)
                         color = [216 / 255, 158 / 255, 146 / 255]
                         point = Circle((j + shift_x, i + shift_y), radius=0.1, color=color, alpha=1)
-                        self.ax.add_artist(point)
+                        self.ax_plot.add_artist(point)
                         self.animal_artists.append(point)
-        
+                    cell_density = cell.getVegetobDensity()
+                    if random.random() > 0.3:
+                        cell_density += 10
+                    elif random.random() > 0.6:
+                        cell_density = cell_density
+                    else:
+                        cell_density -= 10
+                    # print(cell_density)          
+                    green_intensity = int((cell_density / 100) * 255) / 255
+                    color_vegetob = (0, green_intensity, 0)
+                    rectangle = plt.Rectangle((j - 0.5, i - 0.5), 1, 1, color=color_vegetob, alpha=0.4)
+                    self.ax_plot.add_artist(rectangle)
+                    self.animal_artists.append(rectangle)
+    
         return [img] + self.animal_artists
 
     def onclick(self, event):
-        if event.inaxes != self.ax:
-            return
+        if event.inaxes not in [self.ax_pause, self.ax_play, self.ax_x2]: return
         
         x, y = int(event.xdata), int(event.ydata)
         
-        print(f"Coordinates event of click, {x} and {y}")
-        cell = self.env.getGrid()[y, x]
-        print(f"you clicked on cell: {cell}")
+        if event.inaxes == self.ax_play:
+            print('Play clicked')
+            self.start()
+        else:
+            print('Stop clicked')
+            self.pause_animation()
+
 
     def gridToRGB(self, grid):
         """ This method translates the environment grid to an RGB matric for visualization"""
@@ -120,15 +147,25 @@ class Interface():
         # print(f"Grid shape {self.grid.shape}")
         # print(self.grid)
 
-        self.img = self.ax.imshow(self.grid, interpolation='nearest')
+        self.anim_running = True
+        self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
 
         # print(f"Grid shape: {self.grid.shape}")
         # print(f"Grid contents:\n{self.grid}")
 
-        ani = FuncAnimation(self.fig, self.update, fargs=(self.img,),
+        ani = FuncAnimation(self.fig_map, self.update, fargs=(self.img,),
                              interval=1,
                              blit=True,
                              save_count=10)
+        self.ani = ani
         plt.show()
+
+    def pause_animation(self):
+        if self.anim_running:
+            self.ani.event_source.stop()
+            self.anim_running = False
+        else:
+            self.ani.event_source.start()
+            self.anim_running = True
 
 

@@ -4,6 +4,7 @@ from creatures import Erbast, Carviz
 from pprint import pprint
 
 environment = Environment()
+# print(environment.grid[50][50].getVegetobDensity())
 
 animation = Interface(env = environment)
 #animation.start()
