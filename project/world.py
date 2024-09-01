@@ -1,8 +1,11 @@
 import random
-from creatures import Vegetob, Erbast, Carviz, Animal
+from creatures import Vegetob, Erbast, Carviz, Animal, SocialGroup
 from planisuss_constants import *
 import numpy as np
 import noise
+
+
+# TODO should erbasts still be assigned to a cell or should the herd be assigned and the erbast retrieved trough it? How will this affect animals being able to see each others?
 
 ON = 255
 OFF = 0
@@ -50,6 +53,9 @@ class Environment():
             self.getGrid()[x][y].addAnimal(animal)
             self.totCarviz += 1
 
+    def addGroup(self, group:SocialGroup):
+        pass
+
     def removeAnimal(self, animal:Animal):
         """Remove an animal from the creatures list"""
 
@@ -64,15 +70,17 @@ class Environment():
                 self.creatures["Erbast"].remove(animal)
                 self.totErbast -= 1
                 return True
+            
         elif isinstance(animal, Carviz):
             if animal in self.creatures["Carviz"]:
                 self.getGrid()[x][y].removeAnimal(animal)
                 self.creatures["Carviz"].remove(animal)
                 self.totCarviz -= 1
                 return True
+            
         raise Exception(f"animal: {animal}, at coords {animal.getCoords()}, is not present in any cell or is not a Erbast/Carviz")
 
-    def moveAnimal(self, animal:Animal, newCoords:tuple):
+    def moveAnimal(self, animal:Animal, newCoords:tuple): # DON'T USE FOR MULTIPLE ANIMALS
         """given new coords, move the animal if possible and change its coords"""
         if not isinstance(animal, Animal):
             raise TypeError(f"{animal} is not an Animal")
@@ -81,11 +89,21 @@ class Environment():
         animal.coords = newCoords
         self.addAnimal(animal)
 
+    def moveAnimals(self, animals:list[Animal], newCoords:list[tuple]):
+
+        animals = animals[:] # very important step...
+        for animal in animals:
+            self.removeAnimal(animal)
+        for animal, newCoord in zip(animals, newCoords):
+            animal.coords = newCoord
+        for animal in animals[:]:
+            self.addAnimal(animal)
+
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
 
-        newGrid = self.world.grid.copy()
-        cells = newGrid.reshape(-1)
+        grid = self.getGrid()
+        cells = grid.reshape(-1)
         landCells = [landC for landC in cells if isinstance(landC,LandCell)]
         # 1 - GROWING
         for el in landCells:
@@ -94,14 +112,13 @@ class Environment():
         # 2 MOVING
 
         # Erbast move - the following logic will be modified in order to add herds and prides
-        for erbast in self.creatures["Erbast"]:
-            nextCellCoords = erbast.rankMoves(newGrid)[0][1] # take best choice coords TODO- at the end the logic will be more complex
-            if nextCellCoords == erbast.getCoords(): # TODO - other stuff
-                continue
-            self.moveAnimal(erbast,nextCellCoords)
+        nextCellCoords = []
+        erbastsToMove = self.creatures["Erbast"]
 
-        # Updating the WorldGrid
-        self.world.updateGrid(newGrid) #redundancy to be removed
+        for erbast in erbastsToMove:
+            nextCellCoords.append(erbast.rankMoves(grid)[0][1]) # take best choice coords TODO- at the end the logic will be more complex
+        self.moveAnimals(erbastsToMove,nextCellCoords)
+
         return self.getGrid()
     
 class WorldGrid():
@@ -213,6 +230,8 @@ class LandCell(Cell):
         super().__init__(coordinates = coordinates)
         self.vegetob = vegetobPopulation
         self.inhabitants = list()
+        self.herd = None
+        self.pride = None
         self.numErbast = 0
         self.numCarviz = 0
 
@@ -229,7 +248,7 @@ class LandCell(Cell):
         self.vegetob.reduce(amount)
 
     def addAnimal(self, animal:'Animal'):
-        """Remove an animal from the inhabitants list"""
+        """add an animal from the inhabitants list"""
         # TODO
         # to add limitation on the amount of erbaz/carviz
         # to add joining herd dynamics
@@ -247,6 +266,41 @@ class LandCell(Cell):
                 self.numErbast -= 1
             elif isinstance(animal, Carviz):
                 self.numCarviz -= 1
+
+    def addGroup(self, group:'SocialGroup'):
+        """
+        add a Herd or a Pride to the landCell and eventually resolve conflicts / join groups
+        """
+        if isinstance(group, 'Herd'):
+            if self.herd is not None:
+                #TODO - join the two herds
+                pass
+            else:
+                self.herd = group
+                self.numErbast += group.numComponents
+
+        elif isinstance(group, 'Pride'):
+            if self.pride is not None:
+                #TODO - join prides / struggle
+                pass
+            else:
+                self.pride = group
+                self.numCarviz += group.numComponents
+
+    def removeHerd(self):
+        """Remove the herd from the landCell"""
+        if self.herd is not None:
+            self.herd = None
+            self.numErbast -= self.herd.numComponents
+
+    def removePride(self):
+        """Remove the pride from the landCell"""
+        if self.pride is not None:
+            self.pride = None
+            self.numCarviz -= self.pride.numComponents
+
+#    def removeGroup(self, ):
+
 
     def getErbastList(self):
         """Get a list of all Erbast inhabitants in the cell"""

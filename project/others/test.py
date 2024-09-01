@@ -1,6 +1,11 @@
-import numpy as np
+class uomo:
+    def __init__(self):
+        pass
 
-grid = np.zeros((3,3))
+class ometto(uomo):
+    def __init__(self):
+        pass
 
-coords = [(1,2),(0,0),(0,1)]
-print(grid[(2,2)])
+luchino = ometto() 
+
+print(isinstance(luchino, uomo))
