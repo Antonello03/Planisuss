@@ -93,10 +93,10 @@ class Environment():
 
         # 2 MOVING
 
-        # Erbast move
+        # Erbast move - the following logic will be modified in order to add herds and prides
         for erbast in self.creatures["Erbast"]:
             nextCellCoords = erbast.rankMoves(newGrid)[0][1] # take best choice coords TODO- at the end the logic will be more complex
-            if nextCellCoords == 'stay': # TODO - other stuff
+            if nextCellCoords == erbast.getCoords(): # TODO - other stuff
                 continue
             self.moveAnimal(erbast,nextCellCoords)
 
@@ -180,6 +180,9 @@ class Cell():
     def __init__(self, coordinates:tuple):
         self.coords = coordinates
         pass
+
+    def getCoords(self):
+        return self.coords
 
     def getCellType(self):
         pass
