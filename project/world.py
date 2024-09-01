@@ -147,7 +147,6 @@ class WorldGrid():
 
                 grid[i][j] = fbm_value
 
-        # Normalize the values between 0 and 1
         min_val = np.min(grid)
         max_val = np.max(grid)
         grid = (grid - min_val) / (max_val - min_val)
