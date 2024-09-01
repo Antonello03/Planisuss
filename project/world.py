@@ -97,7 +97,7 @@ class Environment():
         for erbast in self.creatures["Erbast"]:
             nextCellCoords = erbast.rankMoves(newGrid)[0][1] # take best choice coords TODO- at the end the logic will be more complex
             if nextCellCoords == 'stay': # TODO - other stuff
-                continue
+                nextCellCoords = erbast.getCoords()
             self.moveAnimal(erbast,nextCellCoords)
 
         # Updating the WorldGrid
@@ -130,7 +130,6 @@ class WorldGrid():
 
                 grid[i][j] = fbm_value
 
-        # Normalize the values between 0 and 1
         min_val = np.min(grid)
         max_val = np.max(grid)
         grid = (grid - min_val) / (max_val - min_val)

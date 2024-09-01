@@ -48,53 +48,82 @@ class Interface():
         # except FileNotFoundError:
         #     print('The file was not found')
         #     self.carviz_img = None
+        self.currentDay = 0
+        self.maxDay = NUMDAYS
+        self.day_text = self.ax_plot.text(0.02, 0.95, f'Day 0', bbox={'facecolor':'w', 'alpha':0.5}, transform=self.ax_plot.transAxes)
         self.animal_artists = []
         self.info_box = None
         self.expand = False
 
         self.anim_running = False
         self.ani = None
+        self.faster = False
         self.fig_map.canvas.mpl_connect('button_press_event', self.onclick)
 
     def update(self, frameNum, img):
         """Update the grid for animation."""
-        # newGrid = env.updateEnv()
-        # img.set_data(newGrid)
+        if self.currentDay >= self.maxDay:
+            self.ani.event_source.stop()
+            return [img]
+        
+        self.env.nextDay()
+        self.currentDay += 1
+        self.day_text.set_text(f"Day: {self.currentDay}")
+        print(f"{frameNum} and {self.currentDay}")
+        newGrid = self.env.getGrid()
+        rgbGrid = self.gridToRGB(newGrid)
+
+        img.set_data(rgbGrid)
 
         for artist in self.animal_artists:
             artist.remove()
         self.animal_artists.clear()
 
-        grid = self.env.getGrid() # I moved this so the method is called only once - Nello
-        for i in range(self.grid.shape[0]):
-            for j in range(self.grid.shape[1]):
-                cell = grid[i, j]
-                # print(cell)
-                if isinstance(cell, LandCell):
-                    for _ in range(2):
-                        # offset_image = OffsetImage(self.erbast_img, zoom=0.2)
-                        shift_x = np.random.uniform(-0.1, 0.1)
-                        shift_y = np.random.uniform(-0.1, 0.1)
-                        color = [216 / 255, 158 / 255, 146 / 255]
-                        point = Circle((j + shift_x, i + shift_y), radius=0.1, color=color, alpha=1)
-                        self.ax_plot.add_artist(point)
-                        self.animal_artists.append(point)
-                    cell_density = cell.getVegetobDensity()
-                    if random.random() > 0.3:
-                        cell_density += 10
-                    elif random.random() > 0.6:
-                        cell_density = cell_density
-                    else:
-                        cell_density -= 10
-                    # print(cell_density)          
-                    green_intensity = int((cell_density / 100) * 255) / 255
-                    color_vegetob = (0, green_intensity, 0)
-                    rectangle = plt.Rectangle((j - 0.5, i - 0.5), 1, 1, color=color_vegetob, alpha=0.4)
-                    self.ax_plot.add_artist(rectangle)
-                    self.animal_artists.append(rectangle)
-    
-        return [img] + self.animal_artists
+        if not self.animal_artists:
+            # grid = self.env.getGrid() # I moved this so the method is called only once - Nello
+            for i in range(newGrid.shape[0]):
+                for j in range(newGrid.shape[1]):
+                    cell = newGrid[i, j]
+                    # print(cell)
+                    if isinstance(cell, LandCell):
+                        erbast_list = cell.getErbastList()
+                        carviz_list = cell.getCarvizList()
+                        if erbast_list or carviz_list:
+                            print(f"cell {i}, {j} contains {len(erbast_list)} erbast and {len(carviz_list)} carviz")
+                        
+                        for erbast in erbast_list:
+                            self.draw_animal(erbast)
+                        for carviz in carviz_list:
+                            self.draw_animal(carviz)
 
+                        self.draw_vegetob(cell, i, j)
+        else:
+            print("The artist list should be cleared")
+    
+        return [img, self.day_text] + self.animal_artists
+    
+    def draw_animal(self, animal):
+        shift_x = np.random.uniform(-0.1, 0.1)
+        shift_y = np.random.uniform(-0.1, 0.1)
+        x, y = animal.getCoords()
+        print('coordinates', (x, y))
+        if isinstance(animal, Erbast):
+            color = [216 / 255, 158 / 255, 146 / 255]
+        else:
+            color = [139 / 255, 0 / 255, 0 / 255]
+        point = Circle((x + shift_x, y + shift_y), radius=0.1, color=color, alpha=1)
+        self.ax_plot.add_artist(point)
+        self.animal_artists.append(point)
+    
+    def draw_vegetob(self, cell, i, j):
+        cell_density = cell.getVegetobDensity()
+        # print(cell_density)          
+        green_intensity = int((cell_density / 100) * 255) / 255
+        color_vegetob = (0, green_intensity, 0)
+        rectangle = plt.Rectangle((j - 0.5, i - 0.5), 1, 1, color=color_vegetob, alpha=0.4)
+        self.ax_plot.add_artist(rectangle)
+        self.animal_artists.append(rectangle)
+        
     def onclick(self, event):
         if event.inaxes not in [self.ax_pause, self.ax_play, self.ax_x2]: return
         
@@ -102,12 +131,22 @@ class Interface():
         
         if event.inaxes == self.ax_play:
             print('Play clicked')
-            self.start()
+            if not self.anim_running:
+                self.start()
+            else:  
+                self.ani.event_source.start()
+                self.anim_running = True
+        elif event.inaxes == self.ax_x2:
+            print("x2 clicked")
+            if self.faster:
+                print("Reverting to normal speed")
+                self.normal_animation()
+            else:
+                self.faster_animation()
         else:
             print('Stop clicked')
             self.pause_animation()
-
-
+        
     def gridToRGB(self, grid):
         """ This method translates the environment grid to an RGB matric for visualization"""
         # in future this will be way more complex
@@ -126,38 +165,27 @@ class Interface():
         gradient_land[land_mask] = 1.0
         gradient_water[water_mask] = 1.0
 
-        smooth_gradient_land = gaussian_filter(gradient_land, sigma=1.5)
-        smooth_color_land = base_color_land * smooth_gradient_land[..., np.newaxis]
-        grid_rgb[land_mask] = np.clip(smooth_color_land[land_mask], 0, 255).astype(np.uint8)
-
-        smooth_gradient_water = gaussian_filter(gradient_water, sigma=1.5)
-        smooth_color_water = base_color_water * smooth_gradient_water[..., np.newaxis]
-        grid_rgb[water_mask] = np.clip(smooth_color_water[water_mask], 0, 255).astype(np.uint8)
+        self.apply_filter(gradient_land, base_color_land, land_mask, grid_rgb)
+        self.apply_filter(gradient_water, base_color_water, water_mask, grid_rgb)
         
         return grid_rgb
+    
+    def apply_filter(self, gradient_arr, base_color, mask, grid_rgb):
+        smooth_gradient_land = gaussian_filter(gradient_arr, sigma=1.5)
+        smooth_color_land = np.array(base_color) * smooth_gradient_land[..., np.newaxis]
+        grid_rgb[mask] = np.clip(smooth_color_land[mask], 0, 255).astype(np.uint8)
+
 
     def start(self):
+        if self.ani is None:
+            self.currentDay = 0
+            self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
 
-        # this is just to see how it would appear, The final mechanism will be more complex I think
-        # colors = [(0.0, "blue"), (1.0, "green")]
-        # cmap_name = "blue_to_brown"
-        # custom_cmap = LinearSegmentedColormap.from_list(cmap_name, colors)
-
-        # print("Grid RGB dtype:", self.grid.dtype)
-        # print(f"Grid shape {self.grid.shape}")
-        # print(self.grid)
-
-        self.anim_running = True
-        self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
-
-        # print(f"Grid shape: {self.grid.shape}")
-        # print(f"Grid contents:\n{self.grid}")
-
-        ani = FuncAnimation(self.fig_map, self.update, fargs=(self.img,),
-                             interval=1,
-                             blit=True,
-                             save_count=10)
-        self.ani = ani
+            self.ani = FuncAnimation(self.fig_map, self.update, fargs=(self.img,),
+                                interval=1400,
+                                blit=False,
+                                repeat=False,
+                                cache_frame_data=False)
         plt.show()
 
     def pause_animation(self):
@@ -167,5 +195,27 @@ class Interface():
         else:
             self.ani.event_source.start()
             self.anim_running = True
+    
+    def faster_animation(self):
+        if self.anim_running:
+            self.ani.event_source.stop()
+            faster_ani = FuncAnimation(
+                self.fig_map, self.update, fargs=(self.img,),
+                interval=50, blit=False, repeat=False, cache_frame_data=False)
+            self.ani = faster_ani
+            self.ani.event_source.start()
+            self.faster = True
+    
+    def normal_animation(self):
+        if self.faster:
+            self.ani.event_source.stop()
+            normal_ani = FuncAnimation(self.fig_map, self.update, fargs=(self.img,),
+                             interval=1000,
+                             blit=False,
+                             repeat=False,
+                             cache_frame_data=False)
+            self.ani = normal_ani
+            self.ani.event_source.start()
+            self.faster = False
 
 
