@@ -1,6 +1,7 @@
 from interface import Interface
 from world import Environment
 from creatures import Erbast, Carviz, Herd
+from creatures import Erbast, Carviz, Herd
 from pprint import pprint
 
 # environment = Environment()
@@ -52,13 +53,9 @@ from pprint import pprint
 # #     environment.nextDay()
 
 environment = Environment()
-# print(environment.grid[50][50].getVegetobDensity())
-
 animation = Interface(env = environment)
-#animation.start()
 
 grid = environment.getGrid()
-
 erb1 = Erbast((25,25),energy=100)
 
 animals = [erb1,

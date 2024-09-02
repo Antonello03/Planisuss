@@ -14,7 +14,7 @@ Stefano Ferrari
 
 ### Game constants
 
-NUMDAYS = 10     # Length of the simulation in days
+NUMDAYS = 25     # Length of the simulation in days
 
 # geometry
 NUMCELLS = 50     # size of the (square) grid (NUMCELLS x NUMCELLS)
@@ -25,6 +25,10 @@ NUMCELLS_C = 1000    # number of columns of the (potentially non-square) grid
 NEIGHBORHOOD = 1     # radius of the region that a social group can evaluate to decide the movement
 NEIGHBORHOOD_E = 1   # radius of the region that a herd can evaluate to decide the movement
 NEIGHBORHOOD_C = 1   #  radius of the region that a pride can evaluate to decide the movement
+
+NEIGHBORHOOD_SOCIAL = 2     # radius of the region that a social group can evaluate to decide the movement
+NEIGHBORHOOD_HERD = 2   # radius of the region that a herd can evaluate to decide the movement
+NEIGHBORHOOD_PRIDE = 2   #  radius of the region that a pride can evaluate to decide the movement
 
 MAX_HERD = 1000      # maximum numerosity of a herd
 MAX_PRIDE = 100      # maximum numerosity of a pride
