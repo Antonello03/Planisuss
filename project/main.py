@@ -55,27 +55,39 @@ environment = Environment()
 # print(environment.grid[50][50].getVegetobDensity())
 
 animation = Interface(env = environment)
-#animation.start()
 
 grid = environment.getGrid()
 
 erb1 = Erbast((25,25),energy=100)
+erb2 = Erbast((27, 28))
 
 animals = [erb1,
-           Erbast((25, 23)),
-           Carviz((24, 26)),
-           Carviz((23, 22))]
+           erb2,
+           Carviz((24, 24)),
+           Carviz((23, 24)),
+           Carviz((27, 26)),
+           ]
 
 for a in animals:
     environment.addAnimal(a)
 
-es = animals[:2]
+erbs = animals[:2]
+# for i in range(4):
+#     print(f"day {i}")
+#     print(f"Ebasts in 25 25: num: {grid[25][25].numErbast}, {grid[25][25].getErbastList()}")
+#     for e in erbs:
+#         print(f"{e} is in {e.getCoords()} and wants to move in {e.rankMoves(grid)[0][1]}")
+#     environment.nextDay()
+    
+animation.start()
 
-print(environment.creatures)
+# es = animals[:2]
 
-for i in range(5):
-    print(f"\nday {i}:")
-    for animal in es:
-        print(f"{animal} is in {animal.getCoords()} and it desired to move in")
-        pprint(animal.rankMoves(grid)[:3])
-    environment.nextDay()
+# print(environment.creatures)
+
+# for i in range(5):
+#     print(f"\nday {i}:")
+#     for animal in es:
+#         print(f"{animal} is in {animal.getCoords()} and it desired to move in")
+#         pprint(animal.rankMoves(grid)[:3])
+#     environment.nextDay()

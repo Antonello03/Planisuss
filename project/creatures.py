@@ -17,6 +17,8 @@ class Animal(Species): #TODO waterCell in getNeighborhood
         self.inSocialGroup = False
         self.alive = True
         self.neighborhoodDistance = neighborhoodDistance
+        self.preferredDirection = None
+        self.preferredDirectionIntensity = 1 # number from 0 to 1
         pass
 
     def getCoords(self):
@@ -102,13 +104,15 @@ class Erbast(Animal):
     ENERGY_WEIGHT = 0.1 # scales how much energy matters overall
     ENERGY_WEIGHT2 = 0.8 # lower value -> more likely to stay even at high energy levels
     ENERGY_EXPONENT = 0.8 # regulates how much the percentage of energy matters
+    ESCAPE_DECAY = 0.8 #for how much time an erbast wants to go in the opposite direction of the last saw carviz
+    ESCAPE_THRESHOLD = 0.3 #Under which value erbast no longer run away
 
     def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY_E, lifetime:int = MAX_LIFE_E, age:int = 0, SocialAttitude:float = 0.5):
         super().__init__(coordinates, energy, lifetime, age, SocialAttitude)
         self.id = Erbast.ID
         Erbast.ID += 1
 
-    def rankMoves(self, worldGrid:'WorldGrid'):
+    def rankMoves(self, worldGrid:'WorldGrid'): #TODO - Erbast is Still too stupid, need to add a preference in direction opposite to last danger which decays in time
         """
         This method calculates the desirability scores for each cell in the given neighborhood and returns a sorted list of pairs [value, ].
         """
@@ -116,6 +120,54 @@ class Erbast(Animal):
         neighborhood = self.getNeighborhood(worldGrid)
         desirabilityScores = {cell:0 for cell in neighborhood}
         presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
+
+        def getDirection(myCoords:tuple ,otherCoords:tuple):
+            """given to coords tuple return direction"""
+            myX, myY = myCoords
+            otherX, otherY = otherCoords
+            if otherX < myX:
+                if otherY < myY:
+                    return 'NW'
+                elif otherY == myY:
+                    return 'N'
+                else:
+                    return 'NE'
+            elif otherX == myX:
+                if otherY < myY:
+                    return 'O'
+                elif otherY == myY:
+                    return None
+                else:
+                    return 'E'
+            else:
+                if otherY < myY:
+                    return 'SW'
+                elif otherY == myY:
+                    return 'S'
+                else:
+                    return 'SE'
+        def getOppositeDirection(myCoords:tuple, otherCoords:tuple):
+            return getDirection(otherCoords, myCoords)
+        def getCellInDirection(myCoords:tuple, direction:str):
+            x,y = myCoords
+            if direction == "N":
+                return (x-1,y)
+            elif direction == "NE":
+                return (x-1,y+1)
+            elif direction == "E":
+                return (x,y+1)
+            elif direction == "SE":
+                return (x+1,y+1)
+            elif direction == "S":
+                return (x+1,y)
+            elif direction == "SW":
+                return (x+1,y-1)
+            elif direction == "W":
+                return (x,y-1)
+            elif direction == "NW":
+                return (x-1,y-1)
+            else:
+                return myCoords
 
         for cell in desirabilityScores:
 
@@ -125,6 +177,10 @@ class Erbast(Animal):
             # also neighbouring cells, if in range, should become more dangerous, but a bit less
             if(cell.numCarviz > 0):
                 x,y = cell.getCoords()
+
+                self.preferredDirection = getOppositeDirection(presentCell.getCoords(), (x,y)) #store last escape direction
+                self.preferredDirectionIntensity = 1 # raise intensity
+
                 nearbyCords = [(x-1, y-1),(x, y-1),(x+1, y-1),(x-1, y+1),(x, y+1),(x+1, y+1),(x-1, y),(x+1, y)]
                 nearbyCells = [worldGrid[coords] for coords in nearbyCords]
                 CellsInRange = [cell for cell in nearbyCells if cell in neighborhood]
@@ -144,6 +200,15 @@ class Erbast(Animal):
         # Staying likability evaluation
         desirabilityScores[presentCell] += ((100 - self.energy)**Erbast.ENERGY_EXPONENT * Erbast.ENERGY_WEIGHT) - Erbast.ENERGY_WEIGHT2
         desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
+        
+        # Running away from carviz
+        escapeCellCoords = getCellInDirection(presentCell.getCoords(), self.preferredDirection)
+        escapeCell = worldGrid[escapeCellCoords]
+        if escapeCell in neighborhood and escapeCell != presentCell and self.preferredDirectionIntensity > Erbast.ESCAPE_THRESHOLD:
+            # print(f"Oh no I'm {self}, I'm in {self.getCoords()} and there's a Carviz nearby, better go in {escapeCell.getCoords()}")
+            desirabilityScores[escapeCell] += self.preferredDirectionIntensity
+            desirabilityScores[escapeCell] = round(desirabilityScores[escapeCell],2)
+            self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
 
         desScoresList = [[item[1],item[0].getCoords()] for item in desirabilityScores.items()]
 
