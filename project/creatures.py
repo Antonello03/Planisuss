@@ -1,5 +1,54 @@
 from planisuss_constants import *
 import numpy as np
+import sys
+
+def getDirection(myCoords:tuple ,otherCoords:tuple):
+    """given to coords tuple return direction"""
+    myX, myY = myCoords
+    otherX, otherY = otherCoords
+    if otherX < myX:
+        if otherY < myY:
+            return 'NW'
+        elif otherY == myY:
+            return 'N'
+        else:
+            return 'NE'
+    elif otherX == myX:
+        if otherY < myY:
+            return 'O'
+        elif otherY == myY:
+            return None
+        else:
+            return 'E'
+    else:
+        if otherY < myY:
+            return 'SW'
+        elif otherY == myY:
+            return 'S'
+        else:
+            return 'SE'
+def getOppositeDirection(myCoords:tuple, otherCoords:tuple):
+    return getDirection(otherCoords, myCoords)
+def getCellInDirection(myCoords:tuple, direction:str):
+    x,y = myCoords
+    if direction == "N":
+        return (x-1,y)
+    elif direction == "NE":
+        return (x-1,y+1)
+    elif direction == "E":
+        return (x,y+1)
+    elif direction == "SE":
+        return (x+1,y+1)
+    elif direction == "S":
+        return (x+1,y)
+    elif direction == "SW":
+        return (x+1,y-1)
+    elif direction == "W":
+        return (x,y-1)
+    elif direction == "NW":
+        return (x-1,y-1)
+    else:
+        return myCoords
 
 class Species:
     def __init__(self):
@@ -120,56 +169,10 @@ class Erbast(Animal):
         """
 
         neighborhood = self.getNeighborhood(worldGrid)
+        LandCell = getattr(sys.modules['world'], 'LandCell')
+        neighborhood = [cell for cell in neighborhood if isinstance(cell, LandCell)]
         desirabilityScores = {cell:0 for cell in neighborhood}
         presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
-
-        def getDirection(myCoords:tuple ,otherCoords:tuple):
-            """given to coords tuple return direction"""
-            myX, myY = myCoords
-            otherX, otherY = otherCoords
-            if otherX < myX:
-                if otherY < myY:
-                    return 'NW'
-                elif otherY == myY:
-                    return 'N'
-                else:
-                    return 'NE'
-            elif otherX == myX:
-                if otherY < myY:
-                    return 'O'
-                elif otherY == myY:
-                    return None
-                else:
-                    return 'E'
-            else:
-                if otherY < myY:
-                    return 'SW'
-                elif otherY == myY:
-                    return 'S'
-                else:
-                    return 'SE'
-        def getOppositeDirection(myCoords:tuple, otherCoords:tuple):
-            return getDirection(otherCoords, myCoords)
-        def getCellInDirection(myCoords:tuple, direction:str):
-            x,y = myCoords
-            if direction == "N":
-                return (x-1,y)
-            elif direction == "NE":
-                return (x-1,y+1)
-            elif direction == "E":
-                return (x,y+1)
-            elif direction == "SE":
-                return (x+1,y+1)
-            elif direction == "S":
-                return (x+1,y)
-            elif direction == "SW":
-                return (x+1,y-1)
-            elif direction == "W":
-                return (x,y-1)
-            elif direction == "NW":
-                return (x-1,y-1)
-            else:
-                return myCoords
 
         for cell in desirabilityScores:
 
@@ -353,6 +356,9 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         super().__init__(components)
         self.id = Herd.ID
         Herd.ID += 1
+        self.preferredDirection = None
+        self.preferredDirectionIntensity = 1 # number from 0 to 1
+
 
     def rankMoves(self, worldGrid:'WorldGrid'):
         """
@@ -368,10 +374,14 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
         neighborhood = self.getNeighborhood(worldGrid, d = self.neighborhoodDistance)
         reachableCells = self.getNeighborhood(worldGrid, d = 1)
+        LandCell = getattr(sys.modules['world'], 'LandCell')
+        neighborhood = [el for el in neighborhood if isinstance(el, LandCell)]
+        reachableCells = [el for el in reachableCells if isinstance(el, LandCell)]
         print(f"neighborhood Cells: {[cell.getCoords() for cell in neighborhood]}\nreachableCells: {[cell.getCoords() for cell in reachableCells]}")
         desirabilityScores = {cell:0 for cell in neighborhood}
         groupSociality = self.getGroupSociality()
         groupEnergy = self.getGroupEnergy()
+        presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
 
         for cell in desirabilityScores:
 
@@ -382,6 +392,9 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             # herd has a better sense of danger and try to stay as far as possible from carvizes
             if(cell.numCarviz > 0):
                 x,y = cell.getCoords()
+
+                self.preferredDirection = getOppositeDirection(presentCell.getCoords(), (x,y)) #store last escape direction
+                self.preferredDirectionIntensity = 1 # raise intensity
 
                 nearbyCords = [(x-1, y-1),(x, y-1),(x+1, y-1),(x-1, y+1),(x, y+1),(x+1, y+1),(x-1, y),(x+1, y)]
                 nearbyCords_2 = [(x-2, y-2),(x-1, y-2),(x, y-2),(x+1, y-2),(x+2, y-2),
@@ -401,15 +414,24 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
                 for cell in CellsInRange_2:
                     desirabilityScores[cell] -= carvizDangerValue * 0.4
 
-            desirabilityScores[cell] += cell.numErbast * groupSociality
+            if presentCell != cell and presentCell.numErbast < cell.numErbast:
+                desirabilityScores[cell] += cell.numErbast * groupSociality
+
             desirabilityScores[cell] += cell.getVegetobDensity() * Erbast.VEG_NEED
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
         # Staying likability evaluation
-        presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
         desirabilityScores[presentCell] += ((100 - groupEnergy)**Erbast.ENERGY_EXPONENT * Erbast.ENERGY_WEIGHT) - Erbast.ENERGY_WEIGHT2
-        desirabilityScores[presentCell] -= groupSociality # remove self-counting
         desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
+        
+        #Runnin away from Carviz
+        escapeCellCoords = getCellInDirection(presentCell.getCoords(), self.preferredDirection)
+        escapeCell = worldGrid[escapeCellCoords]
+        if escapeCell in neighborhood and escapeCell != presentCell and self.preferredDirectionIntensity > Erbast.ESCAPE_THRESHOLD:
+            # print(f"Oh no I'm {self}, I'm in {self.getCoords()} and there's a Carviz nearby, better go in {escapeCell.getCoords()}")
+            desirabilityScores[escapeCell] += self.preferredDirectionIntensity
+            desirabilityScores[escapeCell] = round(desirabilityScores[escapeCell],2)
+            self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
 
         desScoresList = [[item[1],item[0].getCoords()] for item in desirabilityScores.items()]
 

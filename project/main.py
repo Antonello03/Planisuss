@@ -18,7 +18,9 @@ animals = [erb1,
 for a in animals:
     environment.addAnimal(a)
 
+# run either this
 for i in range(10):
     environment.nextDay()
 
-animation.start()
+# or this (otherwise evolution will happen in two phases)
+# animation.start()
