@@ -14,20 +14,22 @@ grid = environment.getGrid()
 erb1 = Erbast((25,25),energy=100)
 
 animals = [erb1,
+           Erbast((25, 25)),
            Carviz((24,26)),
-           Carviz((25,27)),
-           Carviz((25,26), energy=20)]
+           Carviz((23, 22))]
 
 for a in animals:
     environment.addAnimal(a)
 
-es = animals[0]
+es = animals[:4]
+animation.start()
 
-for i in range(10):
-    print(f"day {i}:")
-    print(f"{es} is in {es.getCoords()} and it desired to move in")
-    pprint(es.rankMoves(grid)[:3])
-    environment.nextDay()
+# for i in range(10):
+#     print(f"day {i}:")
+#    for animal in es:
+#         print(f"{animal} is in {animal.getCoords()} and it desired to move in")
+#         pprint(animal.rankMoves(grid)[:3])
+#     environment.nextDay()
 
 
 #I'm having some problems in holding references to certain animals -> I'll fix tomorrow

@@ -103,8 +103,8 @@ class Interface():
         return [img, self.day_text] + self.animal_artists
     
     def draw_animal(self, animal):
-        shift_x = np.random.uniform(-0.1, 0.1)
-        shift_y = np.random.uniform(-0.1, 0.1)
+        shift_x = np.random.uniform(-0.3, 0.3)
+        shift_y = np.random.uniform(-0.3, 0.3)
         x, y = animal.getCoords()
         print('coordinates', (x, y))
         if isinstance(animal, Erbast):
@@ -117,7 +117,7 @@ class Interface():
     
     def draw_vegetob(self, cell, i, j):
         cell_density = cell.getVegetobDensity()
-        # print(cell_density)          
+        # print(f"cell density: {cell_density}")          
         green_intensity = int((cell_density / 100) * 255) / 255
         color_vegetob = (0, green_intensity, 0)
         rectangle = plt.Rectangle((j - 0.5, i - 0.5), 1, 1, color=color_vegetob, alpha=0.4)
@@ -134,7 +134,7 @@ class Interface():
             if not self.anim_running:
                 self.start()
             else:  
-                self.ani.event_source.start()
+                self.ani.resume()
                 self.anim_running = True
         elif event.inaxes == self.ax_x2:
             print("x2 clicked")
