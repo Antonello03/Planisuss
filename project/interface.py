@@ -27,6 +27,7 @@ class Interface():
         
         self.env = env
         self.grid = self.gridToRGB(env.getGrid())
+        self.img = None
         self.fig_map = plt.figure(figsize=(10,10))
         self.gs_map = GridSpec(2, 1, height_ratios=[8, 1], figure=self.fig_map)
         
@@ -36,7 +37,7 @@ class Interface():
         self.fig_map.subplots_adjust(left=0, right=1, top=1, bottom=0)
         self.fig_map.canvas.manager.set_window_title("Planisuss World")
         
-        self. gs_controls = GridSpec(1, 3, figure=self.fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
+        self.gs_controls = GridSpec(1, 3, figure=self.fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
         self.ax_pause = self.fig_map.add_subplot(self.gs_controls[0, 0])
         self.ax_play = self.fig_map.add_subplot(self.gs_controls[0, 1])
         self.ax_x2 = self.fig_map.add_subplot(self.gs_controls[0, 2])
@@ -62,45 +63,49 @@ class Interface():
 
     def update(self, frameNum, img):
         """Update the grid for animation."""
-        if self.currentDay >= self.maxDay:
+        if self.currentDay > self.maxDay:
             self.ani.event_source.stop()
             return [img]
         
         self.env.nextDay()
-        self.currentDay += 1
         self.day_text.set_text(f"Day: {self.currentDay}")
+        
         print(f"{frameNum} and {self.currentDay}")
-        newGrid = self.env.getGrid()
-        rgbGrid = self.gridToRGB(newGrid)
+        # newGrid = self.env.getGrid()
+        # rgbGrid = self.gridToRGB(newGrid)
 
-        img.set_data(rgbGrid)
+        img.set_data(self.grid)
 
         for artist in self.animal_artists:
             artist.remove()
         self.animal_artists.clear()
 
         if not self.animal_artists:
-            # grid = self.env.getGrid() # I moved this so the method is called only once - Nello
-            for i in range(newGrid.shape[0]):
-                for j in range(newGrid.shape[1]):
-                    cell = newGrid[i, j]
-                    # print(cell)
-                    if isinstance(cell, LandCell):
-                        erbast_list = cell.getErbastList()
-                        carviz_list = cell.getCarvizList()
-                        if erbast_list or carviz_list:
-                            print(f"cell {i}, {j} contains {len(erbast_list)} erbast and {len(carviz_list)} carviz")
-                        
-                        for erbast in erbast_list:
-                            self.draw_animal(erbast)
-                        for carviz in carviz_list:
-                            self.draw_animal(carviz)
-
-                        self.draw_vegetob(cell, i, j)
+           self.draw_elements(self.grid)
         else:
             print("The artist list should be cleared")
+        
+        self.currentDay += 1
     
         return [img, self.day_text] + self.animal_artists
+    
+    def draw_elements(self, grid):
+        for i in range(grid.shape[0]):
+            for j in range(grid.shape[1]):
+                cell = self.env.getGrid()[i, j]  # Assuming env.getGrid() gives the latest grid
+                
+                if isinstance(cell, LandCell):
+                    erbast_list = cell.getErbastList()
+                    carviz_list = cell.getCarvizList()
+                    
+                    # Draw animals
+                    for erbast in erbast_list:
+                        self.draw_animal(erbast)
+                    for carviz in carviz_list:
+                        self.draw_animal(carviz)
+                    
+                    # Draw vegetation or other features
+                    self.draw_vegetob(cell, i, j)
     
     def draw_animal(self, animal):
         shift_x = np.random.uniform(-0.3, 0.3)
@@ -134,8 +139,7 @@ class Interface():
             if not self.anim_running:
                 self.start()
             else:  
-                self.ani.resume()
-                self.anim_running = True
+                self.pause_animation()
         elif event.inaxes == self.ax_x2:
             print("x2 clicked")
             if self.faster:
@@ -179,14 +183,33 @@ class Interface():
     def start(self):
         if self.ani is None:
             self.currentDay = 0
-            self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
-
+            
+            self.img = self.display_initial_setup()
+            # self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
             self.ani = FuncAnimation(self.fig_map, self.update, fargs=(self.img,),
                                 interval=1400,
                                 blit=False,
                                 repeat=False,
                                 cache_frame_data=False)
+        else:
+            self.ani.event_source.start()
+        self.anim_running = True
         plt.show()
+
+    def display_initial_setup(self):
+        initial_grid = self.grid
+
+        for artist in self.animal_artists:
+            artist.remove()
+        self.animal_artists.clear()
+
+        self.draw_elements(initial_grid)
+
+        # Update the display to show Day 0
+        self.img = self.ax_plot.imshow(initial_grid, interpolation='nearest')
+        self.day_text.set_text(f'Day 0')
+        # plt.pause(0.1)
+        return self.img
 
     def pause_animation(self):
         if self.anim_running:
@@ -195,6 +218,7 @@ class Interface():
         else:
             self.ani.event_source.start()
             self.anim_running = True
+
     
     def faster_animation(self):
         if self.anim_running:
