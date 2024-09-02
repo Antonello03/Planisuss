@@ -115,6 +115,8 @@ class Erbast(Animal):
     def rankMoves(self, worldGrid:'WorldGrid'): #TODO - Erbast is Still too stupid, need to add a preference in direction opposite to last danger which decays in time
         """
         This method calculates the desirability scores for each cell in the given neighborhood and returns a sorted list of pairs [value, ].
+        
+        rankMoves updates internal parameters, hence if used more times with the same configuration results may differ
         """
 
         neighborhood = self.getNeighborhood(worldGrid)
@@ -334,7 +336,7 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
     def __repr__(self):
         return f"SocialGroup, components:{self.components}"
     
-class Herd(SocialGroup):
+class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
     """
     Joining a Herd has several advantages for an Erbast

@@ -116,7 +116,10 @@ class Environment():
         erbastsToMove = self.creatures["Erbast"]
 
         for erbast in erbastsToMove:
-            nextCellCoords.append(erbast.rankMoves(grid)[0][1]) # take best choice coords TODO- at the end the logic will be more complex
+            nextCoords_tmp = erbast.rankMoves(grid)[0][1]
+            nextCellCoords.append(nextCoords_tmp) # take best choice coords TODO- at the end the logic will be more complex
+            print(f"{erbast} is in {erbast.getCoords()} and wants to move in {nextCoords_tmp} which is a {grid[nextCoords_tmp]}")
+            
         self.moveAnimals(erbastsToMove,nextCellCoords)
 
         return self.getGrid()
