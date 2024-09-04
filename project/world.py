@@ -1,6 +1,7 @@
 import random
-from creatures import Vegetob, Erbast, Carviz, Animal, SocialGroup
+from creatures import Vegetob, Erbast, Carviz, Animal, SocialGroup, Herd, Pride
 from planisuss_constants import *
+from typing import Union
 import numpy as np
 import noise
 
@@ -10,7 +11,7 @@ import noise
 ON = 255
 OFF = 0
 
-class Environment():
+class Environment(): # TODO - modify move animals to allow for group momvements
     """
     The Environment class is the core of Planisuss world.
     Each living being and the worldGrid itself is contained here and the inizialization
@@ -27,12 +28,35 @@ class Environment():
 
     def getGrid(self) -> 'WorldGrid':
         return self.world.grid
-    
+      
+    def getHerds(self) -> list[Herd]:
+        """Obtain all herds in environments"""
+        herds = set()
+        for erb in self.creatures["Erbast"]:
+            herds.add(erb.getSocialGroup())
+        return list(herds)
+
+    def getAloneErbasts(self) -> list[Erbast]:
+        return [e for e in self.creatures["Erbast"] if e.inSocialGroup == False]
+
     def updateGrid(self, newGrid):
         self.world.updateGrid(newGrid)
 
-    def addAnimal(self, animal:Animal):
+    def add(self, object:Union[Animal, SocialGroup]):
+        """
+        Adds an Animal or a SocialGroup to the environment.
+        This allows the environment to correctly assign and monitor the new individuals
+        and it is fundamental for the correct functioning of the simulation
+        """
+        if isinstance(object, Animal):
+            self.addAnimal(object)
+        elif isinstance(object, SocialGroup):
+            self.addGroup(object)
+        else:
+            raise Exception(f"Given object ({object}) must be either an Animal or a SocialGroup")
+        return True
 
+    def addAnimal(self, animal:Animal):
         """
         My approach where each landCell know its inhabitants,
         each creature know its coordinates and the whole environment knows everything
@@ -54,7 +78,27 @@ class Environment():
             self.totCarviz += 1
 
     def addGroup(self, group:SocialGroup):
-        pass
+        
+        x,y = group.getCoords()
+
+        if isinstance(group, Herd):
+            self.creatures["Erbast"].extend(group.getComponents())
+            self.getGrid()[x][y].addGroup(group)
+            self.totErbast += group.numComponents
+
+        if isinstance(group, Pride):
+            self.creatures["Carviz"].extend(group.getComponents())
+            self.getGrid()[x][y].addGroup(group)
+            self.totCarviz += group.numComponents    
+
+    def remove(self, object:Union[Animal, SocialGroup]):
+        if isinstance(object, Animal):
+            self.removeAnimal(object)
+        elif isinstance(object, SocialGroup):
+            self.removeGroup(object)
+        else:
+            raise Exception(f"Given object ({object}) must be either an Animal or a SocialGroup")
+        return True
 
     def removeAnimal(self, animal:Animal):
         """Remove an animal from the creatures list"""
@@ -79,17 +123,33 @@ class Environment():
                 return True
             
         raise Exception(f"animal: {animal}, at coords {animal.getCoords()}, is not present in any cell or is not a Erbast/Carviz")
+                                                                
+    def removeGroup(self, group:SocialGroup): # TODO write code for pride while checking from removeAnimal
+        """"""
+        if not isinstance(group, SocialGroup):
+            raise TypeError(f"{group} is not a social Group")
+        
+        x,y = group.getCoords()
 
-    def moveAnimal(self, animal:Animal, newCoords:tuple): # DON'T USE FOR MULTIPLE ANIMALS
-        """given new coords, move the animal if possible and change its coords"""
-        if not isinstance(animal, Animal):
-            raise TypeError(f"{animal} is not an Animal")
+        if isinstance(group, Herd):
+            if all(el in self.creatures["Erbast"] for el in group.getComponents()):
+                self.totErbast -= group.numComponents
+                self.getGrid()[x][y].removeHerd()
+                self.creatures["Erbast"] = [erb for erb in self.creatures["Erbast"] if erb not in group.getComponents()]
 
-        self.removeAnimal(animal)
-        animal.coords = newCoords
-        self.addAnimal(animal)
+    def move(self, object:Union[list[Animal], list[SocialGroup]], newCoords:list[tuple]):
+        """moves animals or socialgroups to newCoords, eventually changing their attributes"""
+        if all(isinstance(o, Animal) for o in object):
+            self.moveAnimals(object, newCoords)
+        elif all(isinstance(o, SocialGroup) for o in object):
+            self.moveGroups(object, newCoords)
 
     def moveAnimals(self, animals:list[Animal], newCoords:list[tuple]):
+        """given new coords, move all the animals if possible and change its coords"""
+
+        for a in animals:
+            if not isinstance(a, Animal):
+                raise TypeError(f"{a} is not an Animal")
 
         animals = animals[:] # very important step...
         for animal in animals:
@@ -98,6 +158,22 @@ class Environment():
             animal.coords = newCoord
         for animal in animals[:]:
             self.addAnimal(animal)
+
+    def moveGroups(self, groups:list[SocialGroup], newCoords:list[tuple]):
+        """moves a socialGroup from a cell to another updating eventually the interested parameters"""
+        for g in groups:
+            if not isinstance(g, SocialGroup):
+                raise TypeError(f"{g} is not a SocialGroup")
+        
+        groups = groups[:]
+        for g in groups:
+            self.removeGroup(g)
+        for g, newCoord in zip(groups, newCoords):
+            g.coords = newCoord
+            for animal in g.components:
+                animal.coords = newCoord
+        for g in groups[:]:
+            self.addGroup(g)
 
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
@@ -111,7 +187,7 @@ class Environment():
 
         # 2 MOVING
 
-        # Erbast move - the following logic will be modified in order to add herds and prides
+        # Erbast move - TODO - the following logic will be modified in order to add herds and prides
         nextCellCoords = []
         erbastsToMove = self.creatures["Erbast"]
 
@@ -207,7 +283,7 @@ class Cell():
         pass
 
     def __repr__(self):
-        return "Cell"
+        return f"Cell {self.coords}"
 
 class WaterCell(Cell):
     """
@@ -221,7 +297,7 @@ class WaterCell(Cell):
         return "water"
     
     def __repr__(self):
-        return "WaterCell"
+        return f"WaterCell {self.coords}"
     
 class LandCell(Cell):
     """
@@ -231,7 +307,10 @@ class LandCell(Cell):
     def __init__(self, coordinates:tuple, vegetobPopulation: Vegetob):
         super().__init__(coordinates = coordinates)
         self.vegetob = vegetobPopulation
-        self.inhabitants = list()
+        self.creatures = {
+            "Erbast" : [],
+            "Carviz" : []
+        }
         self.herd = None
         self.pride = None
         self.numErbast = 0
@@ -253,56 +332,87 @@ class LandCell(Cell):
         """add an animal from the inhabitants list"""
         # TODO
         # to add limitation on the amount of erbaz/carviz
-        # to add joining herd dynamics
-        self.inhabitants.append(animal)
         if isinstance(animal, Erbast):
-            self.numErbast += 1
-        elif isinstance(animal, Carviz):
-            self.numCarviz += 1
+            if self.numErbast == 0:
+                self.creatures["Erbast"].append(animal)
+                self.numErbast += 1
+            elif self.numErbast == 1: # add in Herd
+                presentAnimal = self.creatures["Erbast"][0]
+                herd = Herd([presentAnimal, animal])
+                self.removeAnimal(presentAnimal)
+                self.addGroup(herd)
+            elif self.numErbast > 1 :
+                self.creatures["Erbast"].append(animal)
+                self.numErbast += 1
+                self.herd.addComponent(animal)
+
+        if isinstance(animal, Carviz): #TODO Carviz logic
+            if self.pride is None:
+                self.creatures["Carviz"].append(animal)
+                self.numCarviz += 1
 
     def removeAnimal(self, animal:'Animal'):
         """Remove an animal from the inhabitants list"""
-        if animal in self.inhabitants:
-            self.inhabitants.remove(animal)
-            if isinstance(animal, Erbast):
-                self.numErbast -= 1
-            elif isinstance(animal, Carviz):
+        if isinstance(animal, Erbast):
+            if animal in self.creatures["Erbast"]:
+                if self.numErbast <= 1:
+                    self.numErbast -= 1
+                    self.creatures["Erbast"].remove(animal)
+                elif self.numErbast == 2:
+                    presentHerd = self.herd.getComponents()
+                    presentHerd.remove(animal)
+                    remainingAnimal = presentHerd[0]
+                    remainingAnimal.inSocialGroup = False
+                    remainingAnimal.socialGroup = None
+                    self.removeHerd()
+                    self.addAnimal(remainingAnimal)
+                else: 
+                    self.creatures["Erbast"].remove(animal)
+                    self.numErbast -= 1
+                    self.herd.loseComponent(animal)
+            else:
+                raise Exception(f"{animal} is not a creature of the cell: {self}, hence it can't be removed")
+
+        elif isinstance(animal, Carviz):
+            if animal in self.creatures["Carviz"]:
+                self.creatures["Carviz"].remove(animal)
                 self.numCarviz -= 1
 
     def addGroup(self, group:'SocialGroup'):
         """
         add a Herd or a Pride to the landCell and eventually resolve conflicts / join groups
         """
-        if isinstance(group, 'Herd'):
+        if isinstance(group, Herd):
             if self.herd is not None:
                 #TODO - join the two herds
                 pass
             else:
                 self.herd = group
+                self.creatures["Erbast"].extend(group.getComponents())
                 self.numErbast += group.numComponents
 
-        elif isinstance(group, 'Pride'):
+        elif isinstance(group, Pride):
             if self.pride is not None:
                 #TODO - join prides / struggle
                 pass
             else:
                 self.pride = group
+                self.creatures["Carviz"].extend(group.getComponents())
                 self.numCarviz += group.numComponents
 
     def removeHerd(self):
         """Remove the herd from the landCell"""
         if self.herd is not None:
             self.herd = None
-            self.numErbast -= self.herd.numComponents
+            self.creatures["Erbast"] = []
+            self.numErbast = 0
 
-    def removePride(self):
+    def removePride(self): # TODO multiple prides could co-exist i think
         """Remove the pride from the landCell"""
         if self.pride is not None:
             self.pride = None
+            self.creatures["Carviz"] = [] 
             self.numCarviz -= self.pride.numComponents
-
-#    def removeGroup(self, ):
-
 
     def getErbastList(self):
         """Get a list of all Erbast inhabitants in the cell"""
@@ -314,7 +424,13 @@ class LandCell(Cell):
 
     def getCellType(self):
         return "land"
+
+    def getHerd(self):
+        return self.herd
+    
+    def getPride(self):
+        return self.pride
     
     def __repr__(self):
-        return "LandCell"
+        return f"LandCell {self.coords}"
     
