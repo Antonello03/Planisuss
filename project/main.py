@@ -12,14 +12,27 @@ erb1 = Erbast((25,25),energy=100)
 erb2 = Erbast((25,25))
 erb3 = Erbast((25,25))
 erbOther = Erbast((28,24))
+erbOther2 = Erbast((28,24))
+herd1 = Herd([erb1,erb2,erb3])
+herd2 = Herd([erbOther, erbOther2])
 
 # for a in animals:
 #     environment.add(a)
 
 def printInfo():
-    print(f"GridCell    -> Erbasts: {gridCell.creatures["Erbast"]}, numErbast: {gridCell.numErbast}, herd: {gridCell.herd} \nEnvironment -> totErb: {environment.totErbast}, erbasts: {environment.creatures["Erbast"]}\n")
+    print(f"GridCell\nErbasts: {gridCell.creatures["Erbast"]}\nnumErbast:{gridCell.numErbast}\nherd: {gridCell.herd}\n\nEnvironment\ntotErb: {environment.totErbast}\nerbasts: {environment.creatures["Erbast"]}\nherds:{environment.getHerds()}\naloneErbasts: {environment.getAloneErbasts()}\n\n")
 
 gridCell = environment.getGrid()[25][25]
+environment.add(herd1)
+environment.add(herd2)
+environment.remove(erb1)
+environment.move([erbOther2],[(25,25)])
+environment.move([erb2],[(24,24)])
+
+#environment.move([herd2], [(25,25)])
+erbs = environment.creatures["Erbast"]
+printInfo()
+
 
 # for i in range(4):
 #     environment.nextDay()

@@ -327,6 +327,11 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
         animal.inSocialGroup = True
         animal.socialGroup = self
         self.numComponents += 1
+
+    def joinGroups(self, other:'SocialGroup'):
+        self.components.extend(other.components)
+        self.numComponents = len(self.components)
+        # join knowledge        
     
     def loseComponent(self, animal:Animal):
         if not isinstance(animal, Animal):
@@ -449,6 +454,13 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
         return sorted(desScoresList, key=lambda x:x[0], reverse = True)
 
+    def joinGroups(self, other: SocialGroup):
+        super().joinGroups(other)
+        for el in other.getComponents():
+            el.socialGroup = self
+            el.inSocialGroup = True
+
+
     def __repr__(self):
         return f"Herd {self.id}, components:{self.components}"
 
@@ -464,6 +476,11 @@ class Pride(SocialGroup):
     def rankMoves(self, worldGrid:'WorldGrid'):
         #each animal ranks the choices individually assigning them a desirability score from 0-1, then if the socialgroup decision is acceptable (scaled by the socialattitude) it is followed
         pass
+
+    def joinGroups(self, other: SocialGroup):
+        super().joinGroups(other)
+        for el in other:
+            other.pride = self
 
     def __repr__(self):
         return f"Pride {self.id}, components: {self.components}"

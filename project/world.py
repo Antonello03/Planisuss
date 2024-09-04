@@ -33,7 +33,9 @@ class Environment(): # TODO - modify move animals to allow for group momvements
         """Obtain all herds in environments"""
         herds = set()
         for erb in self.creatures["Erbast"]:
-            herds.add(erb.getSocialGroup())
+            socG = erb.getSocialGroup()
+            if socG is not None:
+                herds.add(socG)
         return list(herds)
 
     def getAloneErbasts(self) -> list[Erbast]:
@@ -78,7 +80,6 @@ class Environment(): # TODO - modify move animals to allow for group momvements
             self.totCarviz += 1
 
     def addGroup(self, group:SocialGroup):
-        
         x,y = group.getCoords()
 
         if isinstance(group, Herd):
@@ -137,7 +138,7 @@ class Environment(): # TODO - modify move animals to allow for group momvements
                 self.getGrid()[x][y].removeHerd()
                 self.creatures["Erbast"] = [erb for erb in self.creatures["Erbast"] if erb not in group.getComponents()]
 
-    def move(self, object:Union[list[Animal], list[SocialGroup]], newCoords:list[tuple]):
+    def move(self, object:Union[list[Animal], list[SocialGroup]], newCoords:list[tuple]): #TODO can make this work with a list of both anim and social
         """moves animals or socialgroups to newCoords, eventually changing their attributes"""
         if all(isinstance(o, Animal) for o in object):
             self.moveAnimals(object, newCoords)
@@ -172,7 +173,7 @@ class Environment(): # TODO - modify move animals to allow for group momvements
             g.coords = newCoord
             for animal in g.components:
                 animal.coords = newCoord
-        for g in groups[:]:
+        for g in groups:
             self.addGroup(g)
 
     def nextDay(self):
@@ -384,12 +385,19 @@ class LandCell(Cell):
         """
         if isinstance(group, Herd):
             if self.herd is not None:
-                #TODO - join the two herds
+                self.herd.joinGroups(group)
+                self.creatures["Erbast"].extend(group.getComponents())
+                self.numErbast += group.numComponents
                 pass
             else:
+                if self.numErbast == 1:
+                    presentAnimal = self.creatures["Erbast"][0]
+                    self.removeAnimal(presentAnimal)
+                    group.addComponent(presentAnimal)
                 self.herd = group
                 self.creatures["Erbast"].extend(group.getComponents())
                 self.numErbast += group.numComponents
+                
 
         elif isinstance(group, Pride):
             if self.pride is not None:
