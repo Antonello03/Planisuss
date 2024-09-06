@@ -54,7 +54,7 @@ class Species:
     def __init__(self):
         pass
 
-class Animal(Species): #TODO waterCell in getNeighborhood
+class Animal(Species):
 
     def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY, lifetime:int = MAX_LIFE, age:int = 0, SocialAttitude:float = 0.5, neighborhoodDistance = NEIGHBORHOOD):
         super().__init__()
@@ -63,6 +63,7 @@ class Animal(Species): #TODO waterCell in getNeighborhood
         self.lifetime = lifetime
         self.age = age
         self.socialAttitude = SocialAttitude
+        self.socialGroup = None
         self.inSocialGroup = False
         self.alive = True
         self.neighborhoodDistance = neighborhoodDistance
@@ -73,6 +74,9 @@ class Animal(Species): #TODO waterCell in getNeighborhood
     def getCoords(self):
         return self.coords
     
+    def getSocialGroup(self):
+        return self.socialGroup
+
     def getCell(self, grid:'WorldGrid'):
         return grid[self.getCoords()]
 
@@ -282,12 +286,17 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
         if (len(components) > 0):
             self.coords = components[0].getCoords()
             for animal in components:
-                if not isinstance(animal,Animal):
+                if not isinstance(animal, Animal):
                     raise Exception(f"All Individuals should be Animals, received instead {animal}")
                 if animal.getCoords() != self.coords:
-                    raise Exception(f"All Animals should inhabit the same cell, individual {animal} is instead in {animal.getCoords()}")
+                    raise Exception(f"All Animals should inhabit the same cell, individual {animal} is in {animal.getCoords()}, it should be in {self.coords}")
 
         self.components = components
+        
+        for el in self.components:
+            el.inSocialGroup = True
+            el.socialGroup = self
+
         self.numComponents = len(components)
         self.neighborhoodDistance = NEIGHBORHOOD_SOCIAL
         self.groupSociality = 0
@@ -316,7 +325,13 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
         
         self.components.append(animal)
         animal.inSocialGroup = True
+        animal.socialGroup = self
         self.numComponents += 1
+
+    def joinGroups(self, other:'SocialGroup'):
+        self.components.extend(other.components)
+        self.numComponents = len(self.components)
+        # join knowledge        
     
     def loseComponent(self, animal:Animal):
         if not isinstance(animal, Animal):
@@ -324,7 +339,9 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
         
         self.components.remove(animal)
         animal.inSocialGroup = False
+        animal.socialGroup = self
         self.numComponents -= 1
+        return animal
 
     def getCell(self, grid:'WorldGrid'):
         return grid[self.getCoords()]
@@ -437,6 +454,13 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
         return sorted(desScoresList, key=lambda x:x[0], reverse = True)
 
+    def joinGroups(self, other: SocialGroup):
+        super().joinGroups(other)
+        for el in other.getComponents():
+            el.socialGroup = self
+            el.inSocialGroup = True
+
+
     def __repr__(self):
         return f"Herd {self.id}, components:{self.components}"
 
@@ -452,6 +476,11 @@ class Pride(SocialGroup):
     def rankMoves(self, worldGrid:'WorldGrid'):
         #each animal ranks the choices individually assigning them a desirability score from 0-1, then if the socialgroup decision is acceptable (scaled by the socialattitude) it is followed
         pass
+
+    def joinGroups(self, other: SocialGroup):
+        super().joinGroups(other)
+        for el in other:
+            other.pride = self
 
     def __repr__(self):
         return f"Pride {self.id}, components: {self.components}"
