@@ -89,22 +89,30 @@ class Interface():
     
         return [img, self.day_text] + self.animal_artists
     
+    def draw_elements2(self):
+        # getting the total number of erbasts and 
+        pass
+    
     def draw_elements(self, grid):
         for i in range(grid.shape[0]):
             for j in range(grid.shape[1]):
-                cell = self.env.getGrid()[i, j]  # Assuming env.getGrid() gives the latest grid
+                cell = self.env.getGrid()[i, j]
                 
                 if isinstance(cell, LandCell):
-                    erbast_list = cell.getErbastList()
-                    carviz_list = cell.getCarvizList()
+                    erbast_list = cell.creatures['Erbast']
+                    carviz_list = cell.creatures['Carviz']
+                    if erbast_list or carviz_list:
+                        print(erbast_list)
+                        for erbast in erbast_list:
+                            self.draw_animal(erbast)
+                        for carviz in carviz_list:
+                            self.draw_animal(carviz)
                     
-                    # Draw animals
-                    for erbast in erbast_list:
-                        self.draw_animal(erbast)
-                    for carviz in carviz_list:
-                        self.draw_animal(carviz)
+                    # for erbast in erbast_list:
+                        # self.draw_animal(erbast)
+                    # for carviz in carviz_list:
+                        # self.draw_animal(carviz)     
                     
-                    # Draw vegetation or other features
                     self.draw_vegetob(cell, i, j)
     
     def draw_animal(self, animal):
@@ -205,7 +213,6 @@ class Interface():
 
         self.draw_elements(initial_grid)
 
-        # Update the display to show Day 0
         self.img = self.ax_plot.imshow(initial_grid, interpolation='nearest')
         self.day_text.set_text(f'Day 0')
         # plt.pause(0.1)
