@@ -223,11 +223,14 @@ class Erbast(Animal):
 
         return sorted(desScoresList, key=lambda x:x[0], reverse = True)
 
-    def graze(self, grazingAmount): # Vegetob reduction should be handled by environment becaus of herds dynamics
-        if self.energy + grazingAmount <= MAX_ENERGY_E:
-            self.energy += grazingAmount
+    def graze(self, availableVegetob): # Vegetob reduction should be handled by environment becaus of herds dynamics
+        if self.energy + availableVegetob <= MAX_ENERGY_E:
+            self.energy += availableVegetob
+            eatenVeg = availableVegetob
         else:
             self.energy = MAX_ENERGY_E
+            eatenVeg = MAX_ENERGY_E - self.energy
+        return eatenVeg
         
     def __repr__(self):
         return f"Erbast {self.id}"
@@ -339,7 +342,7 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
         
         self.components.remove(animal)
         animal.inSocialGroup = False
-        animal.socialGroup = self
+        animal.socialGroup = None
         self.numComponents -= 1
         return animal
 
@@ -394,7 +397,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         LandCell = getattr(sys.modules['world'], 'LandCell')
         neighborhood = [el for el in neighborhood if isinstance(el, LandCell)]
         reachableCells = [el for el in reachableCells if isinstance(el, LandCell)]
-        print(f"neighborhood Cells: {[cell.getCoords() for cell in neighborhood]}\nreachableCells: {[cell.getCoords() for cell in reachableCells]}")
+        # print(f"neighborhood Cells: {[cell.getCoords() for cell in neighborhood]}\nreachableCells: {[cell.getCoords() for cell in reachableCells]}")
         desirabilityScores = {cell:0 for cell in neighborhood}
         groupSociality = self.getGroupSociality()
         groupEnergy = self.getGroupEnergy()
@@ -450,7 +453,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             desirabilityScores[escapeCell] = round(desirabilityScores[escapeCell],2)
             self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
 
-        desScoresList = [[item[1],item[0].getCoords()] for item in desirabilityScores.items()]
+        desScoresList = [[item[1],item[0].getCoords()] for item in desirabilityScores.items() if item[0] in reachableCells]
 
         return sorted(desScoresList, key=lambda x:x[0], reverse = True)
 

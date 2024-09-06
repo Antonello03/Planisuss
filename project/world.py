@@ -5,13 +5,12 @@ from typing import Union
 import numpy as np
 import noise
 
-
-# TODO should erbasts still be assigned to a cell or should the herd be assigned and the erbast retrieved trough it? How will this affect animals being able to see each others?
+# TODO fix move
 
 ON = 255
 OFF = 0
 
-class Environment(): # TODO - modify move animals to allow for group momvements
+class Environment():
     """
     The Environment class is the core of Planisuss world.
     Each living being and the worldGrid itself is contained here and the inizialization
@@ -138,43 +137,49 @@ class Environment(): # TODO - modify move animals to allow for group momvements
                 self.getGrid()[x][y].removeHerd()
                 self.creatures["Erbast"] = [erb for erb in self.creatures["Erbast"] if erb not in group.getComponents()]
 
-    def move(self, object:Union[list[Animal], list[SocialGroup]], newCoords:list[tuple]): #TODO can make this work with a list of both anim and social
-        """moves animals or socialgroups to newCoords, eventually changing their attributes"""
-        if all(isinstance(o, Animal) for o in object):
-            self.moveAnimals(object, newCoords)
-        elif all(isinstance(o, SocialGroup) for o in object):
-            self.moveGroups(object, newCoords)
+    def move(self, objects: list[Union[Animal, SocialGroup]], newCoords: list[tuple]):
+        """Moves animals and social groups to new coordinates, updating their attributes.
+        Args:
+            objects (list[Union[Animal, SocialGroup]]): A list of objects to be moved, which can be either animals or social groups.
+            newCoords (list[tuple]): A list of new coordinates for the objects to be moved.
+        Raises:
+            TypeError: If any object in the 'objects' list is not an instance of Animal or SocialGroup.
+            Exception: If the number of objects to move and the number of coordinates are not the same.
+        """
 
-    def moveAnimals(self, animals:list[Animal], newCoords:list[tuple]):
-        """given new coords, move all the animals if possible and change its coords"""
-
-        for a in animals:
-            if not isinstance(a, Animal):
-                raise TypeError(f"{a} is not an Animal")
-
-        animals = animals[:] # very important step...
-        for animal in animals:
-            self.removeAnimal(animal)
-        for animal, newCoord in zip(animals, newCoords):
-            animal.coords = newCoord
-        for animal in animals[:]:
-            self.addAnimal(animal)
-
-    def moveGroups(self, groups:list[SocialGroup], newCoords:list[tuple]):
-        """moves a socialGroup from a cell to another updating eventually the interested parameters"""
-        for g in groups:
-            if not isinstance(g, SocialGroup):
-                raise TypeError(f"{g} is not a SocialGroup")
+        if not all(isinstance(obj, Union[Animal,SocialGroup]) for obj in objects):
+            raise TypeError(f"can't move objects which are not animals or SocialGroups")
+        if len(objects) != len(newCoords):
+            raise Exception(f"the number of objects to move and of coordinates should be of the same")
         
-        groups = groups[:]
-        for g in groups:
-            self.removeGroup(g)
-        for g, newCoord in zip(groups, newCoords):
-            g.coords = newCoord
-            for animal in g.components:
-                animal.coords = newCoord
-        for g in groups:
-            self.addGroup(g)
+        objects = objects[:]
+
+        for o in objects:
+            self.remove(o)
+        for o,c in zip(objects,newCoords):
+            self._changeCoords(o,c)
+        for o in objects:
+            self.add(o)
+        
+    def _changeCoords(self, obj:Union[Animal,SocialGroup],newCoords:tuple):
+        """helper func to changee the coords of an animal or a socialgroup"""
+        if isinstance(obj, Animal):
+            obj.coords = newCoords
+            return True
+        elif isinstance(obj, SocialGroup):
+            for el in obj.getComponents():
+                el.coords = newCoords
+            obj.coords = newCoords
+            return True
+        else:
+            raise TypeError(f"obj must be either Animal or SocialGroup, received {obj}")
+
+    def graze(self, grazer:Union[Erbast,Herd]):
+        """handles the grazing by calling erbast and cell methods"""
+        grazingCoords = grazer.getCoords()
+        availableVegetobs = self.getGrid()[grazingCoords].getVegetobDensity()
+        grazingAmount = grazer.graze()
+    
 
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
@@ -188,16 +193,34 @@ class Environment(): # TODO - modify move animals to allow for group momvements
 
         # 2 MOVING
 
-        # Erbast move - TODO - the following logic will be modified in order to add herds and prides
-        nextCellCoords = []
-        erbastsToMove = self.creatures["Erbast"]
+        # Erbast and Herds move
+        creatures = self.getAloneErbasts() + self.getHerds()
 
-        for erbast in erbastsToMove:
-            nextCoords_tmp = erbast.rankMoves(grid)[0][1]
-            nextCellCoords.append(nextCoords_tmp) # take best choice coords TODO- at the end the logic will be more complex
-            print(f"{erbast} is in {erbast.getCoords()} and wants to move in {nextCoords_tmp} which is a {grid[nextCoords_tmp]}")
+        stayingCreatures = []
+
+        movingCreatures = []
+        nextCoordsList = []
+
+        for c in creatures:
+            nextCoords = c.rankMoves(grid)[0][1]
+            if nextCoords == c.getCoords():
+                stayingCreatures.append(c)
+            else:
+                movingCreatures.append(c)
+                nextCoordsList.append(nextCoords) # take best choice coords TODO- at the end the logic will be more complex
             
-        self.moveAnimals(erbastsToMove,nextCellCoords)
+            # print(f"{c} is in {c.getCoords()} and wants to move in {nextCoords_tmp} which is a {grid[nextCoords_tmp]}")
+
+        self.move(movingCreatures,nextCoordsList)
+
+        # Carviz and Prides move - TODO
+
+        # 3 - GRAZING
+        # for e in stayingCreatures:
+        #     e.graze() #define graze... TODO
+
+
+
 
         return self.getGrid()
     
@@ -360,9 +383,9 @@ class LandCell(Cell):
                     self.numErbast -= 1
                     self.creatures["Erbast"].remove(animal)
                 elif self.numErbast == 2:
-                    presentHerd = self.herd.getComponents()
-                    presentHerd.remove(animal)
-                    remainingAnimal = presentHerd[0]
+                    presentHerd = self.herd
+                    presentHerd.loseComponent(animal)
+                    remainingAnimal = presentHerd.getComponents()[0]
                     remainingAnimal.inSocialGroup = False
                     remainingAnimal.socialGroup = None
                     self.removeHerd()
@@ -424,11 +447,11 @@ class LandCell(Cell):
 
     def getErbastList(self):
         """Get a list of all Erbast inhabitants in the cell"""
-        return [erb for erb in self.inhabitants if isinstance(erb, Erbast)]
+        return self.creatures["Erbast"]
 
     def getCarvizList(self):
         """Get a list of all Carviz inhabitants in the cell"""
-        return [car for car in self.inhabitants if isinstance(car, Carviz)]
+        return self.creatures["Carviz"]
 
     def getCellType(self):
         return "land"
