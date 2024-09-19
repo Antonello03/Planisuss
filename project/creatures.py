@@ -2,6 +2,8 @@ from planisuss_constants import *
 import numpy as np
 import sys
 
+#TODO - define graze for herds
+
 def getDirection(myCoords:tuple ,otherCoords:tuple):
     """given to coords tuple return direction"""
     myX, myY = myCoords
@@ -77,6 +79,9 @@ class Animal(Species):
     def getSocialGroup(self):
         return self.socialGroup
 
+    def getEnergy(self):
+        return self.energy
+
     def getCell(self, grid:'WorldGrid'):
         return grid[self.getCoords()]
 
@@ -90,6 +95,8 @@ class Animal(Species):
             else: 
                 self.age = self.lifetime
                 self.alive = False
+            if self.age % 10 == 0:
+                self.energy -= AGING
         else:
             raise RuntimeError("Cannot age a dead animal")
         
@@ -159,6 +166,7 @@ class Erbast(Animal):
     ENERGY_EXPONENT = 0.8 # regulates how much the percentage of energy matters
     ESCAPE_DECAY = 0.8 #for how much time an erbast wants to go in the opposite direction of the last saw carviz
     ESCAPE_THRESHOLD = 0.3 #Under which value erbast no longer run away
+    NOT_EATING_SA_REDUCTION = 0.05
 
     def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY_E, lifetime:int = MAX_LIFE_E, age:int = 0, SocialAttitude:float = 0.5):
         super().__init__(coordinates, energy, lifetime, age, SocialAttitude)
@@ -223,7 +231,8 @@ class Erbast(Animal):
 
         return sorted(desScoresList, key=lambda x:x[0], reverse = True)
 
-    def graze(self, availableVegetob): # Vegetob reduction should be handled by environment becaus of herds dynamics
+    def graze(self, availableVegetob:int) -> int: # Vegetob reduction should be handled by environment becaus of herds dynamics
+        """returns grazed amount"""
         if self.energy + availableVegetob <= MAX_ENERGY_E:
             self.energy += availableVegetob
             eatenVeg = availableVegetob
@@ -367,7 +376,6 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
      - Knowledge about past visited cells
      - Knowledge about predators
      - In a Herd you have multiple eyes hence you'll be able to identify dangers at a longer distance +1 neighborhood Distance
-
     """
 
     ID = 1
@@ -378,7 +386,6 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         Herd.ID += 1
         self.preferredDirection = None
         self.preferredDirectionIntensity = 1 # number from 0 to 1
-
 
     def rankMoves(self, worldGrid:'WorldGrid'):
         """
@@ -463,6 +470,56 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             el.socialGroup = self
             el.inSocialGroup = True
 
+    def _getVegetobDistribution(self, energies:list[int], availableVegetob: int) -> list[int]:
+        """
+        internal method to asses which Erbasts are going to eat and how much, vegetob is iteratively assigned to the lowest energy erbasts untile exhaustion
+        returns vegetob assignments.
+        The method assumes energies are in increasing order.
+        
+        Example: energies: [12, 12, 20], available Vegetob: 18
+        the algorithm progressively assign the available Vegetob to the i hungriest erbasts.
+        - i = 1 -> [12, 12, 20] assignedV: [0, 0, 0] (no assignement since 12 - 12 = 0)
+        - i = 2 -> [21, 21, 20] assignedV: [9, 9, 0] (first energies of 1 and 2 are raised to 20 because 20 - 12 = 8, then the remaining 2 energy is distribuited)
+        """
+        assignedV = [0 for i in range(len(energies))]
+        i = 1 #index of next higher v
+        while availableVegetob > 0 and i <= len(energies):
+            if i < len(energies): #standard case
+                v = energies[i] - energies[i-1] # check how much to balance
+            else: # all erbasts have the same energy
+                v = availableVegetob
+            
+            #check if we have enough vegetob
+            if v * i < availableVegetob:
+                for j in range(i):
+                    assignedV[j] += v
+                availableVegetob -= v * i #update available Vegetob
+            else:
+                splittedV = availableVegetob // i #assign splitted remaining vegetob
+                for j in range(i):
+                    assignedV[j] += splittedV
+                availableVegetob -= splittedV * i
+                if availableVegetob > 0:
+                    for j in range(availableVegetob): #assign eventual surplus
+                        assignedV[j] += 1
+                    availableVegetob = 0
+            i += 1
+        assignedV = [(lambda x: MAX_ENERGY_E - y if x + y > MAX_ENERGY_E else x)(x) for x,y in zip(assignedV, energies)] # energy should be below maxEnergy
+        return assignedV
+
+    def graze(self, availableVegetob:int) -> int: # Vegetob reduction should be handled by environment becaus of herds dynamics
+        """returns grazed amount, updates herds components energy"""
+        # for each erbast I need to understand if it has eaten or not and how much he needs to eat
+        energies = {erb : erb.getEnergy() for erb in self.getComponents()}
+        energies = dict(sorted(energies.items(), key=lambda item: item[1])) #sort by values
+        energiesList = list(energies.values())
+        assignedVegetobs = self._getVegetobDistribution(energiesList, availableVegetob)
+        for erb, veg in zip(energies, assignedVegetobs):
+            if veg > 0:
+                erb.graze(veg)
+            else: #if not eating reduce socialAttitude
+                erb.socialAttitude -= Erbast.NOT_EATING_SA_REDUCTION
+        return sum(assignedVegetobs)
 
     def __repr__(self):
         return f"Herd {self.id}, components:{self.components}"

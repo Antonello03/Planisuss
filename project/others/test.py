@@ -1,5 +1,5 @@
-erbL = ["a","b","c", "n", "o"]#erb
-herd = ["n","o"] #herd
-
-sum = erbL + herd
-print(sum)
+d = {
+    "e":[1,2,3],
+    "c":["1",1,2]
+}
+print(d["e"]+d["c"])
