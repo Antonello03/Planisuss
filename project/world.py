@@ -5,7 +5,7 @@ from typing import Union
 import numpy as np
 import noise
 
-# TODO fix move
+# TODO fix move (grazing ?)
 
 ON = 255
 OFF = 0
@@ -177,9 +177,10 @@ class Environment():
     def graze(self, grazer:Union[Erbast,Herd]):
         """handles the grazing by calling erbast and cell methods"""
         grazingCoords = grazer.getCoords()
-        availableVegetobs = self.getGrid()[grazingCoords].getVegetobDensity()
-        grazingAmount = grazer.graze()
-    
+        grazingCell = self.getGrid()[grazingCoords]
+        availableVegetobs = grazingCell.getVegetobDensity()
+        grazedAmount = grazer.graze(availableVegetobs) # consume specified amount and update energy
+        grazingCell.reduceVegetob(grazedAmount) # reduce vegetob density in cell
 
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
@@ -216,11 +217,12 @@ class Environment():
         # Carviz and Prides move - TODO
 
         # 3 - GRAZING
-        # for e in stayingCreatures:
-        #     e.graze() #define graze... TODO
+        for e in stayingCreatures:
+            self.graze(e) #this includes cell vegetob reduction, herd and individual energy increase
 
-
-
+        # AGING
+        for c in self.creatures["Erbast"] + self.creatures["Carviz"]:
+            c.ageStep()
 
         return self.getGrid()
     
@@ -349,6 +351,8 @@ class LandCell(Cell):
         self.vegetob.grow(times)
 
     def reduceVegetob(self, amount:int = 5):
+        if not isinstance(amount, int):
+            raise TypeError(f"amount must be an integer, received {type(amount)}")
         """apply grazing effects on the Vegetob population in the cell"""
         self.vegetob.reduce(amount)
 

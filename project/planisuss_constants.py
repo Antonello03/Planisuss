@@ -42,9 +42,9 @@ MAX_LIFE = 10000     # maximum value of Lifetime
 MAX_LIFE_E = 10000   # maximum value of Lifetime for Erbast
 MAX_LIFE_C = 10000   # maximum value of Lifetime for Carviz
 
-AGING = 1            # energy lost each month
-AGING_E = 1          # energy lost each month for Erbast
-AGING_C = 1          # energy lost each month for Carviz
+AGING = 20           # energy lost each month
+AGING_E = 20          # energy lost each month for Erbast
+AGING_C = 20          # energy lost each month for Carviz
 
 GROWING = 1          # Vegetob density that grows per day.
 
