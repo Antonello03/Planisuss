@@ -52,9 +52,35 @@ def getCellInDirection(myCoords:tuple, direction:str):
     else:
         return myCoords
 
-class Species:
+class Species():
+    """Class from which Erbasts, Carvizes, Herds and Prides inherit"""
     def __init__(self):
         pass
+
+    def moveChoice(self, worldGrid:'WorldGrid') -> dict['Species', tuple[int, int]]:
+        pass
+
+    def getNeighborhood(self, worldGrid:'WorldGrid', d = None):
+        """
+        This method return the neighborhood of the animal or socialGroup considered, this approach requires storing the worldGrid
+        
+        The worldGrid is passed as an argument to keep the Animal/ SocialGroup class loosely coupled 
+        and focused solely on animal-specific behavior. This approach enhances flexibility, 
+        maintainability, and testability by avoiding direct dependencies between Animal and 
+        a specific WorldGrid instance.
+        """
+        x, y = self.coords[0], self.coords[1]
+        d = d if d is not None else self.neighborhoodDistance
+        cands = worldGrid[x - d : x + d + 1, y - d : y + d + 1].reshape(-1)
+        # print(f"{self} was looking for its neighborhood, i returned {cands}, with neighborhood {d}")
+        # cands = np.delete(cands,len(cands)//2)
+        return cands
+
+    def getCell(self, grid:'WorldGrid'):
+        return grid[self.getCoords()]
+
+    def getCoords(self):
+        return self.coords
 
 class Animal(Species):
 
@@ -71,19 +97,12 @@ class Animal(Species):
         self.neighborhoodDistance = neighborhoodDistance
         self.preferredDirection = None
         self.preferredDirectionIntensity = 1 # number from 0 to 1
-        pass
-
-    def getCoords(self):
-        return self.coords
     
     def getSocialGroup(self):
         return self.socialGroup
 
     def getEnergy(self):
         return self.energy
-
-    def getCell(self, grid:'WorldGrid'):
-        return grid[self.getCoords()]
 
     def ageStep(self, days:int = 1):
         """Increase the age of the animal by the specified number of days"""
@@ -99,26 +118,11 @@ class Animal(Species):
                 self.energy -= AGING
         else:
             raise RuntimeError("Cannot age a dead animal")
-        
-    def getNeighborhood(self, worldGrid:'WorldGrid'):
-        """
-        This method return the neighborhood of the animal considered, this approach requires storing the worldGrid
-        
-        The worldGrid is passed as an argument to keep the Animal class loosely coupled 
-        and focused solely on animal-specific behavior. This approach enhances flexibility, 
-        maintainability, and testability by avoiding direct dependencies between Animal and 
-        a specific WorldGrid instance.
-        """
-        x, y = self.coords[0], self.coords[1]
-        d = self.neighborhoodDistance
-        cands = worldGrid[x - d : x + d + 1, y - d : y + d + 1].reshape(-1)
-        #cands = np.delete(cands,len(cands)//2)
-        return cands
-        
-    def rankMoves(self, worldGrid:'WorldGrid'):
-        """Given an array of neighboring cells, evaluates the desired next move"""
-        #each animal ranks the choices individually assigning them a desirability score from 0-1, then if the socialgroup decision is acceptable (scaled by the socialattitude) it is followed
-        pass
+
+    def moveChoice(self, worldGrid: 'WorldGrid') -> dict['Species', tuple[int, int]]:
+        """handles group"""
+        moveValues = self.rankMoves(worldGrid)
+        return {self: max(moveValues, key=moveValues.get)}
 
 class Vegetob():
 
@@ -161,7 +165,7 @@ class Erbast(Animal):
 
     CARVIZ_DANGER = 0.75
     VEG_NEED = 0.01
-    ENERGY_WEIGHT = 0.1 # scales how much energy matters overall
+    ENERGY_WEIGHT = 0.065 # scales how much energy matters overall
     ENERGY_WEIGHT2 = 0.8 # lower value -> more likely to stay even at high energy levels
     ENERGY_EXPONENT = 0.8 # regulates how much the percentage of energy matters
     ESCAPE_DECAY = 0.8 #for how much time an erbast wants to go in the opposite direction of the last saw carviz
@@ -173,18 +177,19 @@ class Erbast(Animal):
         self.id = Erbast.ID
         Erbast.ID += 1
 
-    def rankMoves(self, worldGrid:'WorldGrid'): #TODO - Erbast is Still too stupid, need to add a preference in direction opposite to last danger which decays in time
+    def rankMoves(self, worldGrid:'WorldGrid'):
         """
-        This method calculates the desirability scores for each cell in the given neighborhood and returns a sorted list of pairs [value, ].
+        This method calculates the desirability scores for each cell in the given neighborhood and returns a dict of {cellcoords: desValue}.
         
         rankMoves updates internal parameters, hence if used more times with the same configuration results may differ
         """
 
-        neighborhood = self.getNeighborhood(worldGrid)
+        neighborhood = self.getNeighborhood(worldGrid, self.neighborhoodDistance)
         LandCell = getattr(sys.modules['world'], 'LandCell')
         neighborhood = [cell for cell in neighborhood if isinstance(cell, LandCell)]
         desirabilityScores = {cell:0 for cell in neighborhood}
         presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
+        stayingNeed = ((100 - self.energy)**Erbast.ENERGY_EXPONENT * Erbast.ENERGY_WEIGHT) - Erbast.ENERGY_WEIGHT2
 
         for cell in desirabilityScores:
 
@@ -208,14 +213,18 @@ class Erbast(Animal):
 
             # TODO - this could still be a problem -> if two individuals are next to each other they might never join in a herd (but they could end up in the same cell for other reasons) -> maybe there aren't problems if the other reasons are enough
 
-            if presentCell != cell and presentCell.numErbast < cell.numErbast: # this avoid herds or individuals in swapping position indefinitely, instead the smaller group will join the bigger one, aslo self counting is avoided
-                desirabilityScores[cell] += cell.numErbast * self.socialAttitude
+            if presentCell != cell:
+                desirabilityScores[cell] -= stayingNeed
+                if presentCell.numErbast < cell.numErbast: # this avoid herds or individuals in swapping position indefinitely, instead the smaller group will join the bigger one, aslo self counting is avoided
+                    desirabilityScores[cell] += cell.numErbast * self.socialAttitude
+                elif cell.numErbast > 0: #if they are not more than us, we stil want to join so we stay still
+                    desirabilityScores[presentCell] += cell.numErbast * self.socialAttitude
 
             desirabilityScores[cell] += cell.getVegetobDensity() * Erbast.VEG_NEED
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
         # Staying likability evaluation
-        desirabilityScores[presentCell] += ((100 - self.energy)**Erbast.ENERGY_EXPONENT * Erbast.ENERGY_WEIGHT) - Erbast.ENERGY_WEIGHT2
+        desirabilityScores[presentCell] += stayingNeed
         desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
         
         # Running away from carviz
@@ -227,9 +236,8 @@ class Erbast(Animal):
             desirabilityScores[escapeCell] = round(desirabilityScores[escapeCell],2)
             self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
 
-        desScoresList = [[item[1],item[0].getCoords()] for item in desirabilityScores.items()]
-
-        return sorted(desScoresList, key=lambda x:x[0], reverse = True)
+        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
+        return returnDict
 
     def graze(self, availableVegetob:int) -> int: # Vegetob reduction should be handled by environment becaus of herds dynamics
         """returns grazed amount"""
@@ -244,7 +252,7 @@ class Erbast(Animal):
     def __repr__(self):
         return f"Erbast {self.id}"
 
-class Carviz(Animal): # TODO - what if we add a "hiding in tall grass" dynamic?
+class Carviz(Animal):
     """
     Angry boy very hungry
 
@@ -252,7 +260,7 @@ class Carviz(Animal): # TODO - what if we add a "hiding in tall grass" dynamic?
     """
     ID = 1
 
-    VEG_NEED = 0.005 # carvist do not need vegetob, but it makes sense for them to look for erbast in food rich zones
+    VEG_NEED = 0.005 # carvist do not need vegetob, but it makes sense for them to look for erbast in food rich zones #TODO but maybe it is more reasonable to look where food has been eaten?
     ERBAST_NEED = 1.2
     ENERGY_WEIGHT = 0.1 # scales how much energy matters overall
     ENERGY_WEIGHT2 = 0.8 # lower value -> more likely to stay even at high energy levels
@@ -263,7 +271,7 @@ class Carviz(Animal): # TODO - what if we add a "hiding in tall grass" dynamic?
         self.id = Carviz.ID
         Carviz.ID += 1
 
-    def rankMoves(self, worldGrid: 'WorldGrid'):
+    def rankMoves(self, worldGrid: 'WorldGrid'): # TODO UPDATE COMPLETELY STILL NOT USING DICT
         """Ranks the moves in the neighborhood based on desirability scores."""
         neighborhood = self.getNeighborhood(worldGrid)
 
@@ -287,13 +295,14 @@ class Carviz(Animal): # TODO - what if we add a "hiding in tall grass" dynamic?
     def __repr__(self):
         return f"Carviz {self.id}"
 
-class SocialGroup: # TODO what particular information may be stored by a socialGroup?
+class SocialGroup(Species): # TODO what particular information may be stored by a socialGroup?
     """
     Holds knowledge about the environment
     """   
 
     def __init__(self, components : list[Animal]):
 
+        super().__init__()
         self.coords = (-1,-1)
         if (len(components) > 0):
             self.coords = components[0].getCoords()
@@ -312,9 +321,6 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
         self.numComponents = len(components)
         self.neighborhoodDistance = NEIGHBORHOOD_SOCIAL
         self.groupSociality = 0
-
-    def getCoords(self):
-        return self.coords
     
     def getGroupSociality(self):
         totSocial = 0
@@ -345,7 +351,7 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
         self.numComponents = len(self.components)
         # join knowledge        
     
-    def loseComponent(self, animal:Animal):
+    def loseComponent(self, animal:Animal): #TODO if we are alone? Destroy herd? is this happening somewhere else?
         if not isinstance(animal, Animal):
             raise ValueError("animal must be an instance of Animal")
         
@@ -354,17 +360,27 @@ class SocialGroup: # TODO what particular information may be stored by a socialG
         animal.socialGroup = None
         self.numComponents -= 1
         return animal
-
-    def getCell(self, grid:'WorldGrid'):
-        return grid[self.getCoords()]
-
-    def getNeighborhood(self, worldGrid:'WorldGrid', d = None):
-        x, y = self.coords[0], self.coords[1]
-        d = d if d is not None else self.neighborhoodDistance
-        cands = worldGrid[x - d : x + d + 1, y - d : y + d + 1].reshape(-1)
-        # cands = np.delete(cands,len(cands)//2)
-        return cands
     
+    def moveChoice(self, worldGrid: 'WorldGrid', applyConsequences:bool = True) -> dict['Species', tuple[int, int]]:
+        """
+        In this method the group decision is assessed and eventual leaving components are identified with their preferred direction,
+        if applyConsequences is True, leaving individuals will be removed from the herd
+        """
+        moveValues = self.rankMoves(worldGrid)
+        groupdecidedCoords = max(moveValues, key=moveValues.get)
+        # print(f"{self} choosed:\n {self.rankMoves(worldGrid)}")
+        leavingIndividualsAndDirection = dict()
+        for c in self.getComponents():
+            individualValues = c.rankMoves(worldGrid)
+            # print(self, "in: ",self.getCoords(),"group want to go: ",groupdecidedCoords, "erbast",c, "in ",c.getCoords(), "preference is:",individualValues)
+            if individualValues[groupdecidedCoords] < -c.socialAttitude: #if individual preference is lower than the negative social attitude for the group choice
+                leavingIndividualsAndDirection[c] = max(individualValues, key=individualValues.get) # get individual preferred movement
+                if applyConsequences:
+                    self.loseComponent(c)
+        
+        choices = {self:groupdecidedCoords,**leavingIndividualsAndDirection}
+        return choices
+
     def __repr__(self):
         return f"SocialGroup, components:{self.components}"
     
@@ -395,7 +411,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         - TODO 
         """
         #each animal ranks the choices individually assigning them a desirability score from 0-1,
-        #then if the socialgroup decision is acceptable (scaled by the socialattitude) it is followed
+        # TODO then if the socialgroup decision is acceptable (scaled by the socialattitude) it is followed
 
         # First of all the Herd makes a decision based on its knowledge
 
@@ -448,6 +464,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
         # Staying likability evaluation
+        desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells
         desirabilityScores[presentCell] += ((100 - groupEnergy)**Erbast.ENERGY_EXPONENT * Erbast.ENERGY_WEIGHT) - Erbast.ENERGY_WEIGHT2
         desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
         
@@ -460,9 +477,8 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             desirabilityScores[escapeCell] = round(desirabilityScores[escapeCell],2)
             self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
 
-        desScoresList = [[item[1],item[0].getCoords()] for item in desirabilityScores.items() if item[0] in reachableCells]
-
-        return sorted(desScoresList, key=lambda x:x[0], reverse = True)
+        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
+        return returnDict
 
     def joinGroups(self, other: SocialGroup):
         super().joinGroups(other)
@@ -507,8 +523,8 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         assignedV = [(lambda x: MAX_ENERGY_E - y if x + y > MAX_ENERGY_E else x)(x) for x,y in zip(assignedV, energies)] # energy should be below maxEnergy
         return assignedV
 
-    def graze(self, availableVegetob:int) -> int: # Vegetob reduction should be handled by environment becaus of herds dynamics
-        """returns grazed amount, updates herds components energy"""
+    def graze(self, availableVegetob:int) -> int:
+        """returns grazed amount, updates herds components energy. Vegetob reduction should be handled by environment"""
         # for each erbast I need to understand if it has eaten or not and how much he needs to eat
         energies = {erb : erb.getEnergy() for erb in self.getComponents()}
         energies = dict(sorted(energies.items(), key=lambda item: item[1])) #sort by values
