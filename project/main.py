@@ -7,9 +7,6 @@ from pprint import pprint
 environment = Environment()
 animation = Interface(env = environment)
 
-def printInfo():
-    print(f"GridCell\nErbasts: {gridCell.creatures["Erbast"]}\nnumErbast:{gridCell.numErbast}\nherd: {gridCell.herd}\n\nEnvironment\ntotErb: {environment.totErbast}\nerbasts: {environment.creatures["Erbast"]}\nherds:{environment.getHerds()}\naloneErbasts: {environment.getAloneErbasts()}\n\n")
-
 grid = environment.getGrid()
 gridCell = environment.getGrid()[25][25]
 
@@ -26,9 +23,6 @@ herd2 = Herd([erbOther, erbOther2])
 # for a in animals:
 #     environment.add(a)
 
-def printInfo():
-    print(f"GridCell\nErbasts: {gridCell.creatures['Erbast']}\nnumErbast:{gridCell.numErbast}\nherd: {gridCell.herd}\n\nEnvironment\ntotErb: {environment.totErbast}\nerbasts: {environment.creatures['Erbast']}\nherds:{environment.getHerds()}\naloneErbasts: {environment.getAloneErbasts()}\n\n")
-
 gridCell = environment.getGrid()[25][25]
 environment.add(herd1)
 environment.add(herd2)
@@ -44,7 +38,7 @@ environment.add(carv2)
 
 #environment.move([herd2], [(25,25)])
 erbs = environment.creatures["Erbast"]
-printInfo()
+# printInfo()
 
 # tot_erbasts = environment.creatures['Erbast']
 # for erbast in tot_erbasts:

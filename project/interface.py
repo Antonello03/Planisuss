@@ -99,19 +99,14 @@ class Interface():
                 cell = self.env.getGrid()[i, j]
                 
                 if isinstance(cell, LandCell):
-                    erbast_list = cell.creatures['Erbast']
-                    carviz_list = cell.creatures['Carviz']
+                    erbast_list = cell.getErbastList()
+                    carviz_list = cell.getCarvizList()
                     if erbast_list or carviz_list:
-                        print(erbast_list)
                         for erbast in erbast_list:
+                            print(f"cell: {i, j}")
                             self.draw_animal(erbast)
                         for carviz in carviz_list:
-                            self.draw_animal(carviz)
-                    
-                    # for erbast in erbast_list:
-                        # self.draw_animal(erbast)
-                    # for carviz in carviz_list:
-                        # self.draw_animal(carviz)     
+                            self.draw_animal(carviz)   
                     
                     self.draw_vegetob(cell, i, j)
     
@@ -124,7 +119,7 @@ class Interface():
             color = [216 / 255, 158 / 255, 146 / 255]
         else:
             color = [139 / 255, 0 / 255, 0 / 255]
-        point = Circle((x + shift_x, y + shift_y), radius=0.1, color=color, alpha=1)
+        point = Circle((y + shift_y, x + shift_x), radius=0.1, color=color, alpha=1)
         self.ax_plot.add_artist(point)
         self.animal_artists.append(point)
     
@@ -230,22 +225,14 @@ class Interface():
     def faster_animation(self):
         if self.anim_running:
             self.ani.event_source.stop()
-            faster_ani = FuncAnimation(
-                self.fig_map, self.update, fargs=(self.img,),
-                interval=50, blit=False, repeat=False, cache_frame_data=False)
-            self.ani = faster_ani
+            self.ani.event_source.interval = 50
             self.ani.event_source.start()
             self.faster = True
     
     def normal_animation(self):
         if self.faster:
             self.ani.event_source.stop()
-            normal_ani = FuncAnimation(self.fig_map, self.update, fargs=(self.img,),
-                             interval=1000,
-                             blit=False,
-                             repeat=False,
-                             cache_frame_data=False)
-            self.ani = normal_ani
+            self.ani.event_source.interval = 1400
             self.ani.event_source.start()
             self.faster = False
 
