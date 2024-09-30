@@ -1,7 +1,6 @@
 from interface import Interface
 from world import Environment
 from creatures import Erbast, Carviz, Herd
-from creatures import Erbast, Carviz, Herd
 from pprint import pprint
 
 environment = Environment()
@@ -10,12 +9,13 @@ animation = Interface(env = environment)
 grid = environment.getGrid()
 gridCell = environment.getGrid()[25][25]
 
-erb1 = Erbast((25,25),energy=100)
-erb2 = Erbast((25,25))
-erb3 = Erbast((25,25))
+erb1 = Erbast((25,25), energy=100)
+erb2 = Erbast((25,25), energy=5)
+erb3 = Erbast((25,25), energy=5)
 
-erbOther = Erbast((28,24))
-erbOther2 = Erbast((28,24))
+
+erbOther = Erbast((24,24), energy=60)
+erbOther2 = Erbast((24,24))
 
 herd1 = Herd([erb1,erb2,erb3])
 herd2 = Herd([erbOther, erbOther2])
