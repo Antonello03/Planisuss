@@ -89,22 +89,25 @@ class Interface():
     
         return [img, self.day_text] + self.animal_artists
     
+    def draw_elements2(self):
+        # getting the total number of erbasts and 
+        pass
+    
     def draw_elements(self, grid):
         for i in range(grid.shape[0]):
             for j in range(grid.shape[1]):
-                cell = self.env.getGrid()[i, j]  # Assuming env.getGrid() gives the latest grid
+                cell = self.env.getGrid()[i, j]
                 
                 if isinstance(cell, LandCell):
                     erbast_list = cell.getErbastList()
                     carviz_list = cell.getCarvizList()
+                    if erbast_list or carviz_list:
+                        for erbast in erbast_list:
+                            print(f"cell: {i, j}")
+                            self.draw_animal(erbast)
+                        for carviz in carviz_list:
+                            self.draw_animal(carviz)   
                     
-                    # Draw animals
-                    for erbast in erbast_list:
-                        self.draw_animal(erbast)
-                    for carviz in carviz_list:
-                        self.draw_animal(carviz)
-                    
-                    # Draw vegetation or other features
                     self.draw_vegetob(cell, i, j)
     
     def draw_animal(self, animal):
@@ -116,7 +119,7 @@ class Interface():
             color = [216 / 255, 158 / 255, 146 / 255]
         else:
             color = [139 / 255, 0 / 255, 0 / 255]
-        point = Circle((x + shift_x, y + shift_y), radius=0.1, color=color, alpha=1)
+        point = Circle((y + shift_y, x + shift_x), radius=0.1, color=color, alpha=1)
         self.ax_plot.add_artist(point)
         self.animal_artists.append(point)
     
@@ -204,7 +207,6 @@ class Interface():
 
         self.draw_elements(initial_grid)
 
-        # Update the display to show Day 0
         self.img = self.ax_plot.imshow(initial_grid, interpolation='nearest')
         self.day_text.set_text(f'Day 0')
         # plt.pause(0.1)
@@ -221,22 +223,14 @@ class Interface():
     def faster_animation(self):
         if self.anim_running:
             self.ani.event_source.stop()
-            faster_ani = FuncAnimation(
-                self.fig_map, self.update, fargs=(self.img,),
-                interval=50, blit=False, repeat=False, cache_frame_data=False)
-            self.ani = faster_ani
+            self.ani.event_source.interval = 50
             self.ani.event_source.start()
             self.faster = True
     
     def normal_animation(self):
         if self.faster:
             self.ani.event_source.stop()
-            normal_ani = FuncAnimation(self.fig_map, self.update, fargs=(self.img,),
-                             interval=1000,
-                             blit=False,
-                             repeat=False,
-                             cache_frame_data=False)
-            self.ani = normal_ani
+            self.ani.event_source.interval = 1400
             self.ani.event_source.start()
             self.faster = False
 
