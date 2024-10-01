@@ -179,7 +179,6 @@ class Interface():
         smooth_color_land = np.array(base_color) * smooth_gradient_land[..., np.newaxis]
         grid_rgb[mask] = np.clip(smooth_color_land[mask], 0, 255).astype(np.uint8)
 
-
     def start(self):
         if self.ani is None:
             self.currentDay = 0
@@ -218,7 +217,6 @@ class Interface():
         else:
             self.ani.event_source.start()
             self.anim_running = True
-
     
     def faster_animation(self):
         if self.anim_running:

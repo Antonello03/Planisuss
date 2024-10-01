@@ -295,17 +295,21 @@ class Carviz(Animal):
     def __repr__(self):
         return f"Carviz {self.id}"
 
-class SocialGroup(Species): # TODO what particular information may be stored by a socialGroup?
+class SocialGroup(Species): # TODO what particular information may be stored by a socialGroup?, lastoords might be an array of fixed length
     """
     Holds knowledge about the environment
     """   
+
+    GOING_BACK_PENALYT = 0.3
 
     def __init__(self, components : list[Animal]):
 
         super().__init__()
         self.coords = (-1,-1)
+        self.lastCoords = (-1,-1)
         if (len(components) > 0):
             self.coords = components[0].getCoords()
+            self.lastCoords = self.coords
             for animal in components:
                 if not isinstance(animal, Animal):
                     raise Exception(f"All Individuals should be Animals, received instead {animal}")
@@ -322,6 +326,11 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         self.neighborhoodDistance = NEIGHBORHOOD_SOCIAL
         self.groupSociality = 0
     
+    def updateCoords(self, newCoords:tuple[int,int]):
+        """Should always be used to update Coords"""
+        self.lastCoords = self.coords
+        self.coords = newCoords
+
     def getGroupSociality(self):
         totSocial = 0
         for component in self.components:
@@ -462,6 +471,9 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
             desirabilityScores[cell] += cell.getVegetobDensity() * Erbast.VEG_NEED
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
+
+            if cell == worldGrid[self.lastCoords]: #avoid going back
+                desirabilityScores[cell] -= SocialGroup.GOING_BACK_PENALYT
 
         # Staying likability evaluation
         desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells

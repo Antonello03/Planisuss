@@ -5,13 +5,9 @@ from typing import Union
 import numpy as np
 import noise
 
-# TODO Leaving Group dynamics
 # TODO Carviz Movement, join dynamic and others...
-# TODO groups won't join together
-# TODO groups should be smart enough to avoid going back to the same cell...
-
-ON = 255
-OFF = 0
+# TODO groups won't join together, I think just because weights assigned to waiting other individuals are too low
+# TODO groups should be smart enough to avoid going back to the same cells...
 
 class Environment():
     """
@@ -184,7 +180,7 @@ class Environment():
         for o in objects:
             self.add(o)
         
-    def _changeCoords(self, obj:Union[Animal,SocialGroup],newCoords:tuple):
+    def _changeCoords(self, obj:Species,newCoords:tuple):
         """helper func to changee the coords of an animal or a socialgroup"""
         if isinstance(obj, Animal):
             obj.coords = newCoords
@@ -192,7 +188,7 @@ class Environment():
         elif isinstance(obj, SocialGroup):
             for el in obj.getComponents():
                 el.coords = newCoords
-            obj.coords = newCoords
+            obj.updateCoords(newCoords)
             return True
         else:
             raise TypeError(f"obj must be either Animal or SocialGroup, received {obj}")
@@ -486,4 +482,3 @@ class LandCell(Cell):
     
     def __repr__(self):
         return f"LandCell {self.coords}"
-    

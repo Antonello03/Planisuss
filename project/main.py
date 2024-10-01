@@ -29,8 +29,7 @@ environment.add(herd1)
 environment.add(herd2)
 environment.add(carv1)
 
-#animation.start()
-
+animation.start()
 
 # print(environment.creatures["Erbast"])
 # for comp in environment.creatures["Erbast"]:
