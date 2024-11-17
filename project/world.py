@@ -23,6 +23,7 @@ class Environment():
         }
         self.totErbast = 0
         self.totCarviz = 0
+        self.day = -1
 
     def getGrid(self) -> 'WorldGrid':
         return self.world.grid
@@ -204,6 +205,10 @@ class Environment():
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
 
+        self.day += 1
+
+        print(f"day {self.day}")
+
         grid = self.getGrid()
         cells = grid.reshape(-1)
         landCells = [landC for landC in cells if isinstance(landC,LandCell)]
@@ -213,8 +218,8 @@ class Environment():
 
         # 2 MOVING
 
-        # Erbast and Herds move
-        species = self.getAloneErbasts() + self.getHerds()
+        # Erbast, Carviz and Herds move
+        species = self.getAloneErbasts() + self.getHerds() + self.getAloneCarviz()
 
         stayingCreatures = [] #staying
         nextCoords = dict() # moving
@@ -224,16 +229,19 @@ class Environment():
 
         nextCoords_tmp = nextCoords.copy()
         for c in nextCoords_tmp:
-            if c.getCoords() == nextCoords[c]:
+            if c.getCoords() == nextCoords[c]: # staying
                 stayingCreatures.append(c)
                 nextCoords.pop(c)
+            else: # moving
+                c.changeEnergy(-1) # energy cost for moving
 
         self.move(nextCoords)
 
-        # Carviz and Prides move - TODO
+        # Prides move - TODO
 
         # 3 - GRAZING
-        for e in stayingCreatures:
+        stayingErbast = [e for e in stayingCreatures if isinstance(e, Erbast)]
+        for e in stayingErbast:
             self.graze(e) #this includes cell vegetob reduction, herd and individual energy increase
 
         # AGING
@@ -317,7 +325,7 @@ class Cell():
         self.coords = coordinates
         pass
 
-    def getCoords(self):
+    def getCoords(self) -> tuple:
         return self.coords
 
     def getCellType(self):
@@ -373,8 +381,7 @@ class LandCell(Cell):
 
     def addAnimal(self, animal:'Animal'):
         """add an animal from the inhabitants list"""
-        # TODO
-        # to add limitation on the amount of erbaz/carviz
+        # 
         if isinstance(animal, Erbast):
             if self.numErbast == 0:
                 self.creatures["Erbast"].append(animal)
@@ -452,9 +459,9 @@ class LandCell(Cell):
     def removeHerd(self):
         """Remove the herd from the landCell"""
         if self.herd is not None:
+            self.creatures["Erbast"] = [erb for erb in self.creatures["Erbast"] if erb not in self.herd.getComponents()]
+            self.numErbast -= self.herd.numComponents
             self.herd = None
-            self.creatures["Erbast"] = []
-            self.numErbast = 0
 
     def removePride(self): # TODO multiple prides could co-exist i think
         """Remove the pride from the landCell"""

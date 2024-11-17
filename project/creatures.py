@@ -1,6 +1,7 @@
 from planisuss_constants import *
 import numpy as np
 import sys
+import math
 
 #TODO - define graze for herds
 
@@ -76,6 +77,9 @@ class Species():
         # cands = np.delete(cands,len(cands)//2)
         return cands
 
+    def changeEnergy(self, amount:int):
+        pass
+
     def getCell(self, grid:'WorldGrid'):
         return grid[self.getCoords()]
 
@@ -84,7 +88,7 @@ class Species():
 
 class Animal(Species):
 
-    def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY, lifetime:int = MAX_LIFE, age:int = 0, SocialAttitude:float = 0.5, neighborhoodDistance = NEIGHBORHOOD):
+    def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY, lifetime:int = MAX_LIFE, age:int = 0, SocialAttitude:float = 0.5, neighborhoodDistance = NEIGHBORHOOD, name:str = None):
         super().__init__()
         self.coords = coordinates
         self.energy = energy
@@ -97,12 +101,28 @@ class Animal(Species):
         self.neighborhoodDistance = neighborhoodDistance
         self.preferredDirection = None
         self.preferredDirectionIntensity = 1 # number from 0 to 1
+        self.name = name
+
+    def getSocialAttitude(self):
+        return self.socialAttitude
     
     def getSocialGroup(self):
         return self.socialGroup
 
     def getEnergy(self):
         return self.energy
+
+    def changeEnergy(self, amount:int):
+        """Change the energy of the animal by the specified amount"""
+        if not isinstance(amount, int):
+            raise ValueError("amount must be an integer")
+        if 0 <= self.energy + amount <= MAX_ENERGY:
+            self.energy += amount
+        elif self.energy + amount < 0:
+            self.energy = 0
+            self.alive = False
+        else:
+            self.energy = MAX_ENERGY
 
     def ageStep(self, days:int = 1):
         """Increase the age of the animal by the specified number of days"""
@@ -118,6 +138,7 @@ class Animal(Species):
                 self.energy -= AGING
         else:
             raise RuntimeError("Cannot age a dead animal")
+
 
     def moveChoice(self, worldGrid: 'WorldGrid') -> dict['Species', tuple[int, int]]:
         """handles group"""
@@ -165,15 +186,16 @@ class Erbast(Animal):
 
     CARVIZ_DANGER = 0.75
     VEG_NEED = 0.01
-    ENERGY_WEIGHT = 0.065 # scales how much energy matters overall
-    ENERGY_WEIGHT2 = 0.8 # lower value -> more likely to stay even at high energy levels
-    ENERGY_EXPONENT = 0.8 # regulates how much the percentage of energy matters
+
+    ENERGY_WEIGHT1 = 2 # scales how much energy matters overall
+    ENERGY_WEIGHT2 = 0.1 # regulates how much the percentage of energy matters
+
     ESCAPE_DECAY = 0.8 #for how much time an erbast wants to go in the opposite direction of the last saw carviz
     ESCAPE_THRESHOLD = 0.3 #Under which value erbast no longer run away
     NOT_EATING_SA_REDUCTION = 0.05
 
-    def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY_E, lifetime:int = MAX_LIFE_E, age:int = 0, SocialAttitude:float = 0.5):
-        super().__init__(coordinates, energy, lifetime, age, SocialAttitude)
+    def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY_E, lifetime:int = MAX_LIFE_E, age:int = 0, SocialAttitude:float = 0.5, name:str = None):
+        super().__init__(coordinates, energy, lifetime, age, SocialAttitude, name = name)
         self.id = Erbast.ID
         Erbast.ID += 1
 
@@ -189,7 +211,7 @@ class Erbast(Animal):
         neighborhood = [cell for cell in neighborhood if isinstance(cell, LandCell)]
         desirabilityScores = {cell:0 for cell in neighborhood}
         presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
-        stayingNeed = ((100 - self.energy)**Erbast.ENERGY_EXPONENT * Erbast.ENERGY_WEIGHT) - Erbast.ENERGY_WEIGHT2
+        stayingNeed = 15 * math.exp(-Erbast.ENERGY_WEIGHT2 * self.getEnergy()) - Erbast.ENERGY_WEIGHT1
 
         for cell in desirabilityScores:
 
@@ -262,35 +284,55 @@ class Carviz(Animal):
 
     VEG_NEED = 0.005 # carvist do not need vegetob, but it makes sense for them to look for erbast in food rich zones #TODO but maybe it is more reasonable to look where food has been eaten?
     ERBAST_NEED = 1.2
+    
     ENERGY_WEIGHT = 0.1 # scales how much energy matters overall
     ENERGY_WEIGHT2 = 0.8 # lower value -> more likely to stay even at high energy levels
     ENERGY_EXPONENT = 0.65 # regulates how much the percentage of energy matters
 
-    def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY_C, lifetime:int = MAX_LIFE_C, age:int = 0, SocialAttitude:float = 0.5):
-        super().__init__(coordinates, energy, lifetime, age, SocialAttitude)
+    def __init__(self, coordinates: tuple, energy:int = MAX_ENERGY_C, lifetime:int = MAX_LIFE_C, age:int = 0, SocialAttitude:float = 0.5, neighborhoodDistance = NEIGHBORHOOD_C, name:str = None):
+        super().__init__(coordinates, energy, lifetime, age, SocialAttitude, neighborhoodDistance, name = name)
         self.id = Carviz.ID
         Carviz.ID += 1
 
-    def rankMoves(self, worldGrid: 'WorldGrid'): # TODO UPDATE COMPLETELY STILL NOT USING DICT
+    def rankMoves(self, worldGrid: 'WorldGrid'):
         """Ranks the moves in the neighborhood based on desirability scores."""
-        neighborhood = self.getNeighborhood(worldGrid)
+        neighborhood = self.getNeighborhood(worldGrid, d = self.neighborhoodDistance)
+        reachableCells = self.getNeighborhood(worldGrid, d = 1)
+        LandCell = getattr(sys.modules['world'], 'LandCell')
+        neighborhood = [cell for cell in neighborhood if isinstance(cell, LandCell)]
+        reachableCells = [el for el in reachableCells if isinstance(el, LandCell)]
+        desirabilityScores = {cell:0 for cell in neighborhood}
+        presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
 
-        desirabilityScores = [[0,cell.coords] for cell in neighborhood] # at the beginnign all cells are equal
-        # all possible cells evaluation
-        for i in range(len(neighborhood)):
-            desirabilityScores[i][0] += neighborhood[i].numErbast * Carviz.ERBAST_NEED
-            desirabilityScores[i][0] += neighborhood[i].getVegetobDensity() * Carviz.VEG_NEED
-            desirabilityScores[i][0] += neighborhood[i].numCarviz * (self.socialAttitude - 0.5) # A carviz might want to stay alone
-            desirabilityScores[i][0] = round(desirabilityScores[i][0], 2)
+        # Carviz are very hungry and they want to eat Erbasts
+        for cell in desirabilityScores:
+            desirabilityScores[cell] += cell.numErbast * Carviz.ERBAST_NEED
+
+            # also neighbouring cells, if in range, should become more attractive, but a bit less
+            if(cell.numErbast > 0):
+                x,y = cell.getCoords()
+                nearbyCords = [(x-1, y-1),(x, y-1),(x+1, y-1),(x-1, y+1),(x, y+1),(x+1, y+1),(x-1, y),(x+1, y)]
+                nearbyCells = [worldGrid[coords] for coords in nearbyCords]
+                CellsInRange = [cell for cell in nearbyCells if cell in reachableCells]
+                for cell in CellsInRange:
+                    desirabilityScores[cell] += cell.numErbast * 0.6
+
+            desirabilityScores[cell] += cell.getVegetobDensity() * Carviz.VEG_NEED
+            desirabilityScores[cell] = round(desirabilityScores[cell], 2)
+            
+            #do we want to meet other carvizes?
+            if presentCell != cell:
+                if presentCell.numCarviz < cell.numCarviz:
+                    desirabilityScores[cell] += cell.numCarviz * (self.socialAttitude - 0.5) # A carviz might want to stay alone
+                elif cell.numCarviz > 0:
+                    desirabilityScores[presentCell] += cell.numCarviz * (self.socialAttitude - 0.5)
 
         # Staying likability evaluation - carviz are very unlikely to stay still, they're constantly looking for Erbasts
-        presentIndex =  len(desirabilityScores)//2
-        desirabilityScores[presentIndex][0] -= ((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT) #when the energy is lwo a prey must be found
-        desirabilityScores[presentIndex][0] -= (self.socialAttitude - 0.5) # remove self-counting
-        desirabilityScores[presentIndex][0] = round(desirabilityScores[presentIndex][0], 2)
-        desirabilityScores[presentIndex][1] = "stay"
-        
-        return sorted(desirabilityScores, key= lambda x : x[0], reverse = True)
+        desirabilityScores[presentCell] -= ((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT) #when the energy is low a prey must be found
+        desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
+
+        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
+        return returnDict
 
     def __repr__(self):
         return f"Carviz {self.id}"
@@ -342,6 +384,13 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         for component in self.components:
             totalEnergy += component.energy
         return round(totalEnergy / self.numComponents , 2)
+
+    def changeEnergy(self, amount:int):
+        """Change the energy of each individual in the group by the specified amount"""
+        if not isinstance(amount, int):
+            raise ValueError("amount must be an integer")
+        for component in self.components:
+            component.changeEnergy(amount)
 
     def getComponents(self):
         return self.components
@@ -477,7 +526,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
         # Staying likability evaluation
         desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells
-        desirabilityScores[presentCell] += ((100 - groupEnergy)**Erbast.ENERGY_EXPONENT * Erbast.ENERGY_WEIGHT) - Erbast.ENERGY_WEIGHT2
+        desirabilityScores[presentCell] +=  15 * math.exp(-Erbast.ENERGY_WEIGHT2 * groupEnergy) - Erbast.ENERGY_WEIGHT1
         desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
         
         #Runnin away from Carviz
@@ -510,7 +559,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         - i = 2 -> [21, 21, 20] assignedV: [9, 9, 0] (first energies of 1 and 2 are raised to 20 because 20 - 12 = 8, then the remaining 2 energy is distribuited)
         """
         assignedV = [0 for i in range(len(energies))]
-        i = 1 #index of next higher v
+        i = 1 #index of next highest v
         while availableVegetob > 0 and i <= len(energies):
             if i < len(energies): #standard case
                 v = energies[i] - energies[i-1] # check how much to balance
