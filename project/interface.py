@@ -117,7 +117,7 @@ class Interface():
                     carviz_list = cell.getCarvizList()
                     if erbast_list or carviz_list:
                         for erbast in erbast_list:
-                            print(f"cell: {i, j}")
+                            # print(f"cell: {i, j}")
                             self.draw_animal(erbast)
                         for carviz in carviz_list:
                             self.draw_animal(carviz)   
@@ -128,7 +128,7 @@ class Interface():
         shift_x = np.random.uniform(-0.3, 0.3)
         shift_y = np.random.uniform(-0.3, 0.3)
         x, y = animal.getCoords()
-        print('coordinates', (x, y))
+        # print('coordinates', (x, y))
         if isinstance(animal, Erbast):
             color = [216 / 255, 158 / 255, 146 / 255]
         else:
