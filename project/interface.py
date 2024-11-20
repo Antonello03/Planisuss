@@ -29,26 +29,19 @@ class Interface():
         self.grid = self.gridToRGB(env.getGrid())
         self.img = None
         self.fig_map = plt.figure(figsize=(10,10))
-        self.gs_map = GridSpec(2, 1, height_ratios=[8, 1], figure=self.fig_map)
+        self.gs_map = GridSpec(2, 2, height_ratios=[6, 1], width_ratios=[6, 1], figure=self.fig_map)
         
         self.ax_plot = self.fig_map.add_subplot(self.gs_map[0, 0])
         self.ax_plot.set_aspect('equal', adjustable='box')
         self.ax_plot.axis('off')
-        self.fig_map.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        self.welcome_plot= self.fig_map.add_subplot(self.gs_map[0, 1])
+        self.welcome_plot.text(-0.1, 0.5, f'Welcome to Planisuss\nClick on any cell to know more information', va='center')
+        self.welcome_plot.axis('off')
+        self.fig_map.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, wspace=0.3, hspace=0.2)
+        self.fig_map.tight_layout(pad=1.0)
         self.fig_map.canvas.manager.set_window_title("Planisuss World")
+        self.setup_controls()
         
-        self.gs_controls = GridSpec(1, 3, figure=self.fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
-        self.ax_pause = self.fig_map.add_subplot(self.gs_controls[0, 0])
-        self.ax_play = self.fig_map.add_subplot(self.gs_controls[0, 1])
-        self.ax_x2 = self.fig_map.add_subplot(self.gs_controls[0, 2])
-
-        # try:
-            # erbast_img = Image.open("C://Users//stefa//OneDrive - Università di Pavia//Downloads//erbastN.jpg")
-            # self.erbast_img = erbast_img.resize((10, 10))
-            # self.erbast_offset = OffsetImage(np.array(self.erbast_img), zoom=0.5)
-        # except FileNotFoundError:
-        #     print('The file was not found')
-        #     self.carviz_img = None
         self.currentDay = 0
         self.maxDay = NUMDAYS
         self.day_text = self.ax_plot.text(0.02, 0.95, f'Day 0', bbox={'facecolor':'w', 'alpha':0.5}, transform=self.ax_plot.transAxes)
@@ -60,6 +53,27 @@ class Interface():
         self.ani = None
         self.faster = False
         self.fig_map.canvas.mpl_connect('button_press_event', self.onclick)
+
+    def setup_controls(self):
+        gs_controls = GridSpec(1, 3, figure=self.fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
+        controls = {
+            'ax_pause' : (self.fig_map.add_subplot(gs_controls[0, 0]), "files//pause.png"),
+            'ax_play' : (self.fig_map.add_subplot(gs_controls[0, 1]), "files//play.png"),
+            'ax_x2' : (self.fig_map.add_subplot(gs_controls[0, 2]), "files//x2.png")
+        
+        }
+        for name, (ax, pathImg) in controls.items():   
+            try:
+                img = Image.open(pathImg)
+                ax.imshow(img, extent=[0, 1, 0, 1])
+                ax.axis('off')
+                setattr(self, name, ax)
+            except FileNotFoundError:
+                print('The image was not found')
+                img = None
+                setattr(self, name, None)
+        self.fig_map.show
+
 
     def update(self, frameNum, img):
         """Update the grid for animation."""
@@ -133,9 +147,15 @@ class Interface():
         self.animal_artists.append(rectangle)
         
     def onclick(self, event):
-        if event.inaxes not in [self.ax_pause, self.ax_play, self.ax_x2]: return
+        if event.inaxes not in [self.ax_pause, self.ax_play, self.ax_x2, self.ax_plot]: return
         
-        x, y = int(event.xdata), int(event.ydata)
+        x, y = event.xdata, event.ydata
+        print(self.grid.shape)
+        grid_height, grid_width = self.grid.shape[0], self.grid.shape[1]
+        cell_width = (self.ax_plot.get_xlim()[1] - self.ax_plot.get_xlim()[0]) / grid_width
+        cell_height = (self.ax_plot.get_ylim()[0] - self.ax_plot.get_ylim()[1]) / grid_height
+        grid_x = int((y - self.ax_plot.get_ylim()[1]) // cell_height)
+        grid_y = int((x - self.ax_plot.get_xlim()[0]) // cell_width)
         
         if event.inaxes == self.ax_play:
             print('Play clicked')
@@ -150,9 +170,16 @@ class Interface():
                 self.normal_animation()
             else:
                 self.faster_animation()
+        elif event.inaxes == self.ax_plot:
+            if self.anim_running:
+                self.pause_animation()
+            # self.env.nextDay()
+            print(f"cell {grid_x,grid_y} has been clicked")
+            self.show_cell_info(grid_x, grid_y)
         else:
             print('Stop clicked')
             self.pause_animation()
+
         
     def gridToRGB(self, grid):
         """ This method translates the environment grid to an RGB matric for visualization"""
@@ -189,7 +216,7 @@ class Interface():
             self.img = self.display_initial_setup()
             # self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
             self.ani = FuncAnimation(self.fig_map, self.update, fargs=(self.img,),
-                                interval=1400,
+                                interval=2000,
                                 blit=False,
                                 repeat=False,
                                 cache_frame_data=False)
@@ -230,8 +257,151 @@ class Interface():
     def normal_animation(self):
         if self.faster:
             self.ani.event_source.stop()
-            self.ani.event_source.interval = 1400
+            self.ani.event_source.interval = 2000
             self.ani.event_source.start()
             self.faster = False
+
+    def show_cell_info(self, x, y):
+        cell = self.env.getGrid()[x, y]
+        fig = plt.figure(figsize=(5,5))
+        gs = GridSpec(2, 2, height_ratios=[3, 1], figure=fig)
+        ax_img = fig.add_subplot(gs[0, 0])
+        test2 = Image.open("files//carvizN.jpg")
+        # ax = ShowCard.remove_text(self.ax[1])
+        extent = [0, 0.5, 0.5, 1]
+        ax_img.imshow(test2, extent=extent)
+        ax_img.text(0.01, 0.45, f"Cell's coordinates: {x}, {y}", ha='left')
+        ax_img.text(0.01, 0.35, f"Cell's vegetob density: {cell.getVegetobDensity()}")
+        ax_img.axis('off')
+        
+        
+        erbast_list = cell.getErbastList()
+        carviz_list = cell.getCarvizList()
+        if erbast_list:
+            tot_erbast = len(erbast_list)
+            erbast_empty = False
+        else:
+            print("There are no erbasts in the cell")
+            tot_erbast =  1
+            erbast_empty = True
+        if carviz_list:
+            tot_carviz = len(carviz_list)
+            carviz_empty = False
+        else:
+            print("There are no carviz in the cell")
+            tot_carviz = 1
+            carviz_empty = True
+        print(f"Amount of erbasts in cell {x, y}= {erbast_list} sum {tot_erbast}")
+        print(f"Amount of erbasts in cell {x, y}= {carviz_list} sum {tot_carviz}")
+        total_rows = tot_erbast + tot_carviz + 2
+        height_ratios = [0.1 for _ in range(total_rows)]
+        gs_animals = GridSpec(total_rows, 1, figure=fig, height_ratios=height_ratios, width_ratios=[0.1], left=0.7, right=0.95, top=0.9, bottom=0.1) 
+        
+        axis_erbast = self.axis_individuals(tot_erbast, fig, gs_animals, 0, erbast=True, list_animals= erbast_list, empty=erbast_empty)
+        axis_carviz = self.axis_individuals(tot_carviz, fig, gs_animals, tot_erbast+1, erbast=False, list_animals = carviz_list, empty=carviz_empty)   
+        
+        print("erbast axis", axis_erbast)
+        print("carviz axis", axis_carviz)
+
+        self.individuals_axis = axis_erbast + axis_carviz
+
+        fig.canvas.draw()
+        fig.show()
+
+        fig.canvas.mpl_connect('button_press_event', lambda event: self.track_onclick(event, self.individuals_axis))
+    
+    def axis_individuals(self, n : int, fig, gs, start_row, erbast : bool, list_animals : list, empty : bool):
+        title_pos = start_row
+        ax_title = fig.add_subplot(gs[title_pos, 0])
+        t = f"Erbast in cell" if erbast else f"Carviz in cell"
+        ax_title.text(0.3, 0.3, t, ha='center')
+        ax_title.axis('off')
+
+        s = 'Erbast' if erbast else 'Carviz'
+        s_empty = 'There are no Erbast in cell' if empty and erbast else 'There is no Carviz in cell'
+        individuals_axis = []
+        for i in range(n):
+            ax = fig.add_subplot(gs[start_row + 1 + i, 0])
+            if empty:
+                ax.text(0.3, 0.3, f"{s_empty}", ha='center', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
+                individuals_axis.append((ax, None))
+            else:
+                ax.text(0.3, 0.3, f"{s+str(i+1)}", ha='center', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
+                individuals_axis.append((ax, list_animals[i]))
+
+            ax.axis('off')
+
+        fig.canvas.draw()
+        return individuals_axis
+    
+    def track_onclick(self, event, individuals_axis):
+        for i, (ax, individual) in enumerate(individuals_axis):
+            if ax == event.inaxes:
+                self.show_individuals(individual)
+                break
+
+    def show_individuals(self, clicked_individual):
+        fig = plt.figure(figsize=(5,5))
+        gs_stats = GridSpec(5, 2, figure=fig, width_ratios=[1, 1], height_ratios=[0.4, 0.4, 0.4, 0.2, 0.2], left=0.05, right=0.95, top=0.9, bottom=0.1)
+
+        # Adding the pixel art on the left
+        ax_animal = fig.add_subplot(gs_stats[0:2, 0])  # Span over multiple rows for the pixel art
+        animal_path = "files//carvizN.jpg" if isinstance(clicked_individual, Carviz) else "files//erbastN.jpg"
+        animal_art = Image.open(animal_path)
+        ax_animal.imshow(animal_art, extent=[0.0, 1.0, 0.0, 1.0])
+        ax_animal.text(0.5, -0.1, f"Individual's ID: {clicked_individual.ID} ", fontsize=8, ha='center', va='center', transform=ax_animal.transAxes)
+        ax_animal.axis('off')
+
+        # First row (energy bar) on the right
+        individual_energy = clicked_individual.getEnergy()
+        if individual_energy < 30:
+            energy_path = "files//energy1.png"
+        elif 30 <= individual_energy < 100:
+            energy_path = "files//energy2.png"
+        elif individual_energy == 100:
+            energy_path = "files//energy3.png"
+        ax_energy = fig.add_subplot(gs_stats[0, 1])
+        energy = Image.open(energy_path).resize((2000, 700))
+        ax_energy.imshow(energy)
+        ax_energy.text(0.5, -0.1, f'Energy: {individual_energy}', fontsize=8, ha='left', va='center', transform=ax_energy.transAxes)
+        ax_energy.axis('off')
+
+        # Second row (strength bar)
+        individual_age = clicked_individual.age
+        ax_age = fig.add_subplot(gs_stats[1, 1])
+        heart = Image.open("files//heart_png.png")
+        ax_age.imshow(heart)
+        ax_age.text(1.0, 0.5, f'Age: {individual_age}', fontsize=8, ha='left', va='center', transform=ax_age.transAxes)
+        ax_age.axis('off')
+
+        # Third row (social attention bar)
+        individual_att = clicked_individual.socialAttitude
+        if individual_att < 0.3:
+            att_path = "files//SocAtt1.png"
+        elif 0.3 <= individual_att < 1:
+            att_path = "files//SocAtt2.png"
+        elif individual_att == 1:
+            att_path = "files//SocAtt3.png"
+        ax_social_att = fig.add_subplot(gs_stats[2, 1])
+        socialAtt = Image.open(att_path).resize((2000, 700))
+        ax_social_att.imshow(socialAtt)
+        ax_social_att.text(0.5, -0.1, f'Social ATT: {individual_att}', fontsize=8, ha='left', va='center', transform=ax_social_att.transAxes)
+        ax_social_att.axis('off')
+
+        # Coordinates (at the bottom left)
+        ax_coords = fig.add_subplot(gs_stats[3, 0])
+        ax_coords.text(0.5, 0.5, f'Coords: {clicked_individual.coords}', fontsize=8, ha='center', va='center', transform=ax_coords.transAxes)
+        ax_coords.axis('off')
+
+        # Extra info at the bottom right
+        ax_info = fig.add_subplot(gs_stats[3, 1])
+        ax_info.text(0.5, 0.5, 'Extra Info:', fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
+        social_group = "Individual belongs to a social group" if clicked_individual.inSocialGroup else "Individual is alone"
+        ax_info.text(0.5, 0.15, social_group, fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
+        ax_info.axis('off')
+
+        fig.subplots_adjust(hspace=0.7)
+        fig.show()
+
 
 
