@@ -26,9 +26,9 @@ herd2 = Herd([erbOther, erbOther2])
 gridCell = environment.getGrid()[25][25]
 environment.add(herd1)
 environment.add(herd2)
-environment.remove(erb1)
-environment.move([erbOther2],[(25,25)])
-environment.move([erb2],[(24,24)])
+# environment.remove(erb1)
+# environment.move({erbOther2 : (25,25)})
+# environment.move({erb2 : (24,24)})
 
 
 carv1 = Carviz((24, 24))
