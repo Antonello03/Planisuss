@@ -26,6 +26,7 @@ class Interface():
             raise TypeError(f"Expected env to be an instance of Environment, but got {type(env).__name__} instead.")
         
         self.env = env
+        self.grids = np.array(env.getGrid())
         self.grid = self.gridToRGB(env.getGrid())
         self.img = None
         self.fig_map = plt.figure(figsize=(10,10))
@@ -54,6 +55,15 @@ class Interface():
         self.faster = False
         self.fig_map.canvas.mpl_connect('button_press_event', self.onclick)
 
+    def start_menu(self):
+        fig_menu = plt.figure(figsize=(10,10))
+        gs_menu = GridSpec(1, 3, figure=self.fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.1, top=0.15, bottom=0.07, wspace=0.05)
+        rgb_maps = map(self.gridToRGB, self.grids)
+        
+        for map in rgb_maps:
+
+
+
     def setup_controls(self):
         gs_controls = GridSpec(1, 3, figure=self.fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
         controls = {
@@ -81,6 +91,8 @@ class Interface():
             self.ani.event_source.stop()
             return [img]
         
+
+        img.set_data(self.grid)
         self.env.nextDay()
         self.day_text.set_text(f"Day: {self.currentDay}")
         
@@ -88,7 +100,7 @@ class Interface():
         # newGrid = self.env.getGrid()
         # rgbGrid = self.gridToRGB(newGrid)
 
-        img.set_data(self.grid)
+        # img.set_data(self.grid)
 
         for artist in self.animal_artists:
             artist.remove()
