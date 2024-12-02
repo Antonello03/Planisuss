@@ -259,38 +259,38 @@ class WorldGrid():
         """ Method to generate island like maps. Returns a numpy grid of zeros and 255 """
         if seed is None:
             seed = random.randint(0, 100)
-        else:
-            grid = np.zeros((n, n))
-            center = n // 2
-            max_dist = center * np.sqrt(2)
+        
+        grid = np.zeros((n, n))
+        center = n // 2
+        max_dist = center * np.sqrt(2)
+        for i in range(n):
+            for j in range(n):
+                x = i / scale
+                y = j / scale
+                fbm_value = 0.0
+                amplitude = 1.0
+                frequency = 1.0
+                for _ in range(octaves):
+                    fbm_value += amplitude * noise.pnoise2(x * frequency, y * frequency, base = seed)
+                    amplitude *= persistence
+                    frequency *= lacunarity
+
+                grid[i][j] = fbm_value
+
+        min_val = np.min(grid)
+        max_val = np.max(grid)
+        grid = (grid - min_val) / (max_val - min_val)
+
+        if dynamic:
             for i in range(n):
                 for j in range(n):
-                    x = i / scale
-                    y = j / scale
-                    fbm_value = 0.0
-                    amplitude = 1.0
-                    frequency = 1.0
-                    for _ in range(octaves):
-                        fbm_value += amplitude * noise.pnoise2(x * frequency, y * frequency, base = seed)
-                        amplitude *= persistence
-                        frequency *= lacunarity
-
-                    grid[i][j] = fbm_value
-
-            min_val = np.min(grid)
-            max_val = np.max(grid)
-            grid = (grid - min_val) / (max_val - min_val)
-
-            if dynamic:
-                for i in range(n):
-                    for j in range(n):
-                        distance = np.sqrt((i - center) ** 2 + (j - center) ** 2)
-                        distance_weight = distance / max_dist
-                        dynamic_treshold = threshold + (1 - threshold) * distance_weight
-                        # print(dynamic_treshold)
-                        grid[i][j] = 1 if grid[i][j] > dynamic_treshold else 0
-            else:
-                grid = np.where(grid > threshold, 1, 0)
+                    distance = np.sqrt((i - center) ** 2 + (j - center) ** 2)
+                    distance_weight = distance / max_dist
+                    dynamic_treshold = threshold + (1 - threshold) * distance_weight
+                    # print(dynamic_treshold)
+                    grid[i][j] = 1 if grid[i][j] > dynamic_treshold else 0
+        else:
+            grid = np.where(grid > threshold, 1, 0)
                 
         return grid
 
@@ -304,19 +304,15 @@ class WorldGrid():
         """
         
         if typology == "fbm":
-            seeds = [1,2,42]
-            grids = []
-            for seed in seeds:
-                values_grid = self.__fbmNoise(NUMCELLS, threshold, seed=seed, dynamic=True)
-                grid = np.zeros((NUMCELLS, NUMCELLS), dtype=object)
-                for i in range(NUMCELLS):
-                    for j in range(NUMCELLS):
-                        if values_grid[i][j] > threshold:
-                            grid[i][j] = LandCell((i, j), Vegetob(density=25 + random.randint(-10, 10)))
-                        else:
-                            grid[i][j] = WaterCell((i, j))
-                grids.append(grid)
-        return grids
+            values_grid = self.__fbmNoise(NUMCELLS, threshold, seed=None, dynamic=True)
+            grid = np.zeros((NUMCELLS, NUMCELLS), dtype=object)
+            for i in range(NUMCELLS):
+                for j in range(NUMCELLS):
+                    if values_grid[i][j] > threshold:
+                        grid[i][j] = LandCell((i, j), Vegetob(density=25 + random.randint(-10, 10)))
+                    else:
+                        grid[i][j] = WaterCell((i, j))
+        return grid
 
     def updateGrid(self, newGrid):
         self.grid = newGrid

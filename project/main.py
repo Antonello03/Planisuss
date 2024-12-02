@@ -7,9 +7,6 @@ import numpy as np
 environment = Environment()
 animation = Interface(env = environment)
 
-def printInfo():
-    print(f"GridCell\nErbasts: {gridCell.creatures["Erbast"]}\nnumErbast:{gridCell.numErbast}\nherd: {gridCell.herd}\n\nEnvironment\ntotErb: {environment.totErbast}\nerbasts: {environment.creatures["Erbast"]}\nherds:{environment.getHerds()}\naloneErbasts: {environment.getAloneErbasts()}\n\n")
-
 gridCell = environment.getGrid()[25][25]
 
 erb1 = Erbast((25,25), energy=100, name="schiavo 1")
@@ -27,5 +24,5 @@ environment.add(herd2)
 environment.add(carv1)
 environment.add(carv2)
 
-# animation.start()
+animation.run_simulation()
 
