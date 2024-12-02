@@ -19,49 +19,90 @@ class Interface():
     Class that handles the visualization of the interface
     Maybe we can put even the following in a class?
     """
+    IMAGE_PATHS = {
+        'SOCIAL_ATT': {
+            'LOW': "files//SocAtt1.png",
+            'MEDIUM': "files//SocAtt2.png",
+            'HIGH': "files//SocAtt3.png"
+        },
+        'ENERGY': {
+            'LOW': "files//energy1.png",
+            'MEDIUM': "files//energy2.png",
+            'HIGH': "files//energy3.png"
+        }
+    }
+    COLORS = (234/255, 222/255, 204/255, 0.7)
+
 
     def __init__(self, env):
-
+        
         if not isinstance(env, Environment):
             raise TypeError(f"Expected env to be an instance of Environment, but got {type(env).__name__} instead.")
         
+        self.initialize_attributes(env)
+        self.fig_map
+        self.fig_map.canvas.mpl_connect('button_press_event', self.onclick)
+        self.day_text = self.ax_plot.text(0.02, 0.95, f'Day 0', bbox={'facecolor':'w', 'alpha':0.5}, transform=self.ax_plot.transAxes)
+
+    def initialize_attributes(self, env):
         self.env = env
-        self.grids = np.array(env.getGrid())
         self.grid = self.gridToRGB(env.getGrid())
         self.img = None
-        self.fig_map = plt.figure(figsize=(10,10))
-        self.gs_map = GridSpec(2, 2, height_ratios=[6, 1], width_ratios=[6, 1], figure=self.fig_map)
-        
-        self.ax_plot = self.fig_map.add_subplot(self.gs_map[0, 0])
-        self.ax_plot.set_aspect('equal', adjustable='box')
-        self.ax_plot.axis('off')
-        self.welcome_plot= self.fig_map.add_subplot(self.gs_map[0, 1])
-        self.welcome_plot.text(-0.1, 0.5, f'Welcome to Planisuss\nClick on any cell to know more information', va='center')
-        self.welcome_plot.axis('off')
-        self.fig_map.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, wspace=0.3, hspace=0.2)
-        self.fig_map.tight_layout(pad=1.0)
-        self.fig_map.canvas.manager.set_window_title("Planisuss World")
-        self.setup_controls()
-        
         self.currentDay = 0
         self.maxDay = NUMDAYS
-        self.day_text = self.ax_plot.text(0.02, 0.95, f'Day 0', bbox={'facecolor':'w', 'alpha':0.5}, transform=self.ax_plot.transAxes)
         self.animal_artists = []
         self.info_box = None
         self.expand = False
-
         self.anim_running = False
         self.ani = None
         self.faster = False
-        self.fig_map.canvas.mpl_connect('button_press_event', self.onclick)
 
     def start_menu(self):
         fig_menu = plt.figure(figsize=(10,10))
-        gs_menu = GridSpec(1, 3, figure=self.fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.1, top=0.15, bottom=0.07, wspace=0.05)
-        rgb_maps = map(self.gridToRGB, self.grids)
-        
-        for map in rgb_maps:
+        gs_menu = GridSpec(2, 3, figure=fig_menu, height_ratios=[1, 3], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.05, hspace=0.3)
+        ax_title = fig_menu.add_subplot(gs_menu[0, 1])
+        ax_title.set_title("Image Title")
+        ax_title.axis('off')
 
+        ax_map1 = fig_menu.add_subplot(gs_menu[1, 0])
+        ax_map2 = fig_menu.add_subplot(gs_menu[1, 1])
+        ax_map3 = fig_menu.add_subplot(gs_menu[1, 2])
+        
+        fig_menu.canvas.mpl_connect('button_press_event', lambda event: self.choose_map(fig_menu, event))
+        fig_menu.show()
+    
+    def choose_map(self, fig_menu, event):
+        if event.inaxes not in fig_menu.get_axes(): return
+
+        title, map1, map2, map3 = list(fig_menu.get_axes())
+        
+        if event.inaxes == title:
+            print('Title clicked')
+        elif event.inaxes == map1:
+            print("map1 clicked")
+        elif event.inaxes == map2:
+            print("map2 clicked")
+        elif event.inaxes == map3:
+            print("map3 clicked")
+
+    @property
+    def fig_map(self):
+        if not hasattr(self, '_fig_map'):
+            self._fig_map = plt.figure(figsize=(7, 7))
+            self._fig_map.set_facecolor(self.COLORS)
+            self.gs_map = GridSpec(2, 2, height_ratios=[6, 1], width_ratios=[6, 1], figure=self._fig_map)
+            
+            self.ax_plot = self._fig_map.add_subplot(self.gs_map[0, 0])
+            self.ax_plot.set_aspect('equal', adjustable='box')
+            self.ax_plot.axis('off')
+            self.welcome_plot = self._fig_map.add_subplot(self.gs_map[0, 1])
+            self.welcome_plot.text(-0.1, 0.5, f'Click on any cell to know more information', va='center')
+            self.welcome_plot.axis('off')
+            self._fig_map.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, wspace=0.3, hspace=0.2)
+            self._fig_map.tight_layout(pad=1.0)
+            self._fig_map.canvas.manager.set_window_title("Planisuss World")
+            self.setup_controls()
+        return self._fig_map
 
 
     def setup_controls(self):
@@ -87,6 +128,9 @@ class Interface():
 
     def update(self, frameNum, img):
         """Update the grid for animation."""
+        
+        self.currentDay = frameNum
+        
         if self.currentDay > self.maxDay:
             self.ani.event_source.stop()
             return [img]
@@ -111,30 +155,28 @@ class Interface():
         else:
             print("The artist list should be cleared")
         
-        self.currentDay += 1
+        # self.currentDay += 1
     
         return [img, self.day_text] + self.animal_artists
-    
-    def draw_elements2(self):
-        # getting the total number of erbasts and 
-        pass
     
     def draw_elements(self, grid):
         for i in range(grid.shape[0]):
             for j in range(grid.shape[1]):
                 cell = self.env.getGrid()[i, j]
-                
                 if isinstance(cell, LandCell):
-                    erbast_list = cell.getErbastList()
-                    carviz_list = cell.getCarvizList()
-                    if erbast_list or carviz_list:
-                        for erbast in erbast_list:
-                            # print(f"cell: {i, j}")
-                            self.draw_animal(erbast)
-                        for carviz in carviz_list:
-                            self.draw_animal(carviz)   
-                    
+                    self.draw_animals_in_cell(cell)
                     self.draw_vegetob(cell, i, j)
+
+    def draw_animals_in_cell(self, cell):
+        erbast_list = cell.getErbastList()
+        carviz_list = cell.getCarvizList()
+        
+        for erbast in erbast_list:
+            self.draw_animal(erbast)
+            
+        for carviz in carviz_list:
+            self.draw_animal(carviz)
+    
     
     def draw_animal(self, animal):
         shift_x = np.random.uniform(-0.3, 0.3)
@@ -223,12 +265,14 @@ class Interface():
 
 
     def start(self):
+
         if self.ani is None:
             self.currentDay = 0
             
             self.img = self.display_initial_setup()
+            plt.pause(1)
             # self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
-            self.ani = FuncAnimation(self.fig_map, self.update, fargs=(self.img,),
+            self.ani = FuncAnimation(self.fig_map, self.update, frames=list(range(1, self.maxDay +1)), fargs=(self.img,),
                                 interval=2000,
                                 blit=False,
                                 repeat=False,
@@ -355,67 +399,121 @@ class Interface():
                 break
 
     def show_individuals(self, clicked_individual):
+        """Display individual's information in a new figure."""
         fig = plt.figure(figsize=(5,5))
-        gs_stats = GridSpec(5, 2, figure=fig, width_ratios=[1, 1], height_ratios=[0.4, 0.4, 0.4, 0.2, 0.2], left=0.05, right=0.95, top=0.9, bottom=0.1)
+        gs_stats = GridSpec(5, 2, figure=fig, 
+                        width_ratios=[1, 1], 
+                        height_ratios=[0.4, 0.4, 0.4, 0.2, 0.2], 
+                        left=0.05, right=0.95, top=0.9, bottom=0.1)
+        
+        # Create subplots
+        self.create_animal_subplot(fig, gs_stats, clicked_individual)
+        self.create_age_subplot(fig, gs_stats, clicked_individual.age)
+        self.create_energy_subplot(fig, gs_stats, clicked_individual.getEnergy())
+        self.create_social_att_subplot(fig, gs_stats, clicked_individual.socialAttitude)
+        
+        # Additional info
+        ax_coords = fig.add_subplot(gs_stats[3, 0])
+        ax_coords.text(0.5, 0.5, f'Coords: {clicked_individual.coords}', 
+                    fontsize=8, ha='center', va='center', transform=ax_coords.transAxes)
+        ax_coords.axis('off')
+        
+        ax_info = fig.add_subplot(gs_stats[3, 1])
+        ax_info.text(0.5, 0.5, 'Extra Info:', 
+                    fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
+        social_group = "Individual belongs to a social group" if clicked_individual.inSocialGroup else "Individual is alone"
+        ax_info.text(0.5, 0.15, social_group, 
+                    fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
+        ax_info.axis('off')
+        
+        fig.subplots_adjust(hspace=0.7)
+        fig.show()
 
-        # Adding the pixel art on the left
-        ax_animal = fig.add_subplot(gs_stats[0:2, 0])  # Span over multiple rows for the pixel art
+    def create_animal_subplot(self, fig, gs_stats, clicked_individual):
+        """Create subplot for animal image."""
+        ax_animal = fig.add_subplot(gs_stats[0:2, 0])
         animal_path = "files//carvizN.jpg" if isinstance(clicked_individual, Carviz) else "files//erbastN.jpg"
         animal_art = Image.open(animal_path)
         ax_animal.imshow(animal_art, extent=[0.0, 1.0, 0.0, 1.0])
-        ax_animal.text(0.5, -0.1, f"Individual's ID: {clicked_individual.ID} ", fontsize=8, ha='center', va='center', transform=ax_animal.transAxes)
+        ax_animal.text(0.5, -0.1, f"Individual's ID: {clicked_individual.ID} ", 
+                    fontsize=8, ha='center', va='center', transform=ax_animal.transAxes)
         ax_animal.axis('off')
-
-        # First row (energy bar) on the right
-        individual_energy = clicked_individual.getEnergy()
-        if individual_energy < 30:
-            energy_path = "files//energy1.png"
-        elif 30 <= individual_energy < 100:
-            energy_path = "files//energy2.png"
-        elif individual_energy == 100:
-            energy_path = "files//energy3.png"
-        ax_energy = fig.add_subplot(gs_stats[0, 1])
-        energy = Image.open(energy_path).resize((2000, 700))
-        ax_energy.imshow(energy)
-        ax_energy.text(0.5, -0.1, f'Energy: {individual_energy}', fontsize=8, ha='left', va='center', transform=ax_energy.transAxes)
-        ax_energy.axis('off')
-
-        # Second row (strength bar)
-        individual_age = clicked_individual.age
+        return ax_animal
+    
+    def create_age_subplot(self, fig, gs_stats, individual_age):
         ax_age = fig.add_subplot(gs_stats[1, 1])
         heart = Image.open("files//heart_png.png")
         ax_age.imshow(heart)
         ax_age.text(1.0, 0.5, f'Age: {individual_age}', fontsize=8, ha='left', va='center', transform=ax_age.transAxes)
         ax_age.axis('off')
+        return ax_age
 
-        # Third row (social attention bar)
-        individual_att = clicked_individual.socialAttitude
-        if individual_att < 0.3:
-            att_path = "files//SocAtt1.png"
-        elif 0.3 <= individual_att < 1:
-            att_path = "files//SocAtt2.png"
-        elif individual_att == 1:
-            att_path = "files//SocAtt3.png"
+    def create_social_att_subplot(self, fig, gs_stats, individual_att):
+        att_path = self._get_social_att_image(individual_att)
         ax_social_att = fig.add_subplot(gs_stats[2, 1])
         socialAtt = Image.open(att_path).resize((2000, 700))
         ax_social_att.imshow(socialAtt)
         ax_social_att.text(0.5, -0.1, f'Social ATT: {individual_att}', fontsize=8, ha='left', va='center', transform=ax_social_att.transAxes)
         ax_social_att.axis('off')
+        return ax_social_att
+    
+    def _get_social_att_image(self, attitude):
+        """
+        Return appropriate image path based on social attribute value.
+        
+        Args:
+            social attribute (int): Social Attribute level of the individual
+            
+        Returns:
+            str: Path to the appropriate social attribute image
+        """
+        if attitude < 30:
+            return self.IMAGE_PATHS['SOCIAL_ATT']['LOW']
+        elif attitude < 100:
+            return self.IMAGE_PATHS['SOCIAL_ATT']['MEDIUM']
+        return self.IMAGE_PATHS['SOCIAL_ATT']['HIGH']
+    
 
-        # Coordinates (at the bottom left)
-        ax_coords = fig.add_subplot(gs_stats[3, 0])
-        ax_coords.text(0.5, 0.5, f'Coords: {clicked_individual.coords}', fontsize=8, ha='center', va='center', transform=ax_coords.transAxes)
-        ax_coords.axis('off')
+    def create_energy_subplot(self, fig, gs_stats, individual_energy):
+        """
+        Create subplot showing energy level with appropriate image.
+        
+        Args:
+            fig: matplotlib figure
+            gs_stats: GridSpec object
+            individual_energy (float): Energy level of the individual
+        """
+        energy_path = self._get_energy_image(individual_energy)
+        ax_energy = fig.add_subplot(gs_stats[0, 1])
+        energy = Image.open(energy_path).resize((2000, 700))
+        ax_energy.imshow(energy)
+        ax_energy.text(0.5, -0.1, f'Energy: {individual_energy}', 
+                    fontsize=8, ha='left', va='center', 
+                    transform=ax_energy.transAxes)
+        ax_energy.axis('off')
+        return ax_energy
 
-        # Extra info at the bottom right
-        ax_info = fig.add_subplot(gs_stats[3, 1])
-        ax_info.text(0.5, 0.5, 'Extra Info:', fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
-        social_group = "Individual belongs to a social group" if clicked_individual.inSocialGroup else "Individual is alone"
-        ax_info.text(0.5, 0.15, social_group, fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
-        ax_info.axis('off')
+    def _get_energy_image(self, energy):
+        """
+        Return appropriate image path based on energy value.
+        
+        Args:
+            energy (float): Energy level of the individual
+            
+        Returns:
+            str: Path to the appropriate energy image
+        """
+        if energy < 30:
+            return self.IMAGE_PATHS['ENERGY']['LOW']
+        elif energy < 100:
+            return self.IMAGE_PATHS['ENERGY']['MEDIUM']
+        return self.IMAGE_PATHS['ENERGY']['HIGH']
 
-        fig.subplots_adjust(hspace=0.7)
-        fig.show()
+
+    def run_simulation(self):
+        # self.start_menu() uncomment to show main title window
+        self.start()
+        plt.show()
 
 
 
