@@ -24,5 +24,5 @@ environment.add(herd2)
 environment.add(carv1)
 environment.add(carv2)
 
-animation.start()
+animation.run_simulation()
 
