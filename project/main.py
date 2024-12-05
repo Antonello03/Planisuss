@@ -5,9 +5,7 @@ from pprint import pprint
 import numpy as np
 
 environment = Environment()
-# animation = Interface(env = environment)
-grid = np.array(environment.getGrid())
-print(grid.shape)
+animation = Interface(env = environment)
 
 gridCell = environment.getGrid()[25][25]
 
@@ -26,5 +24,5 @@ environment.add(herd2)
 environment.add(carv1)
 environment.add(carv2)
 
-# animation.start()
+animation.start()
 
