@@ -402,6 +402,16 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         if not isinstance(animal, Animal):
             raise ValueError("animal must be an instance of Animal")
         
+        if len(self.components) == 2:
+            self.components.remove(animal)
+            animal.inSocialGroup = False
+            animal.socialGroup = None
+            self.components[0].inSocialGroup = False
+            self.components[0].socialGroup = None
+            self.components.remove(self.components[0])
+            self.numComponents == 0
+            return "No more Group"
+        
         self.components.remove(animal)
         animal.inSocialGroup = False
         animal.socialGroup = None
