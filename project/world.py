@@ -5,9 +5,7 @@ from typing import Union
 import numpy as np
 import noise
 
-# TODO Leaving Group dynamics
-# TODO Carviz Movement, join dynamic and others...
-# TODO groups won't join together
+# TODO Carviz join dynamic and others...
 # TODO groups should be smart enough to avoid going back to the same cell...
 
 ON = 255
@@ -159,7 +157,7 @@ class Environment():
             if all(el in self.creatures["Carviz"] for el in group.getComponents()):
                 self.totCarviz -= group.numComponents
                 self.creatures["Carviz"] = [carv for carv in self.creatures["Carviz"] if carv not in group.getComponents()]
-                self.getGrid()[x][y].removePride()
+                self.getGrid()[x][y].removePride(group)
 
     def move(self, nextCoords: dict[Species, tuple]):
         """
@@ -223,10 +221,10 @@ class Environment():
         # 2 MOVING
 
         # Erbast, Carviz and Herds move
-        species = self.getAloneErbasts() + self.getHerds() + self.getAloneCarviz()
+        species = self.getAloneErbasts() + self.getHerds() + self.getAloneCarviz() + self.getPrides()
 
-        stayingCreatures = [] #staying
-        nextCoords = dict() # moving
+        stayingCreatures = []
+        nextCoords = dict() # of moving creatures
         
         for c in species:
             nextCoords.update(c.moveChoice(worldGrid = grid))
@@ -241,7 +239,6 @@ class Environment():
 
         self.move(nextCoords)
 
-        # Prides move - TODO
 
         # 3 - GRAZING
         stayingErbast = [e for e in stayingCreatures if isinstance(e, Erbast)]
@@ -367,7 +364,7 @@ class LandCell(Cell):
             "Carviz" : []
         }
         self.herd = None
-        self.pride = None
+        self.prides = []
         self.numErbast = 0
         self.numCarviz = 0
 
@@ -451,16 +448,11 @@ class LandCell(Cell):
                 self.herd = group
                 self.creatures["Erbast"].extend(group.getComponents())
                 self.numErbast += group.numComponents
-                
 
         elif isinstance(group, Pride):
-            if self.pride is not None:
-                #TODO - join prides / struggle
-                pass
-            else:
-                self.pride = group
-                self.creatures["Carviz"].extend(group.getComponents())
-                self.numCarviz += group.numComponents
+            self.prides.append(group)
+            self.creatures["Carviz"].extend(group.getComponents())
+            self.numCarviz += group.numComponents
 
     def removeHerd(self):
         """Remove the herd from the landCell"""
@@ -469,12 +461,11 @@ class LandCell(Cell):
             self.numErbast -= self.herd.numComponents
             self.herd = None
 
-    def removePride(self): # TODO multiple prides could co-exist i think
+    def removePride(self, pride:'Pride'): # TODO multiple prides could co-exist i think
         """Remove the pride from the landCell"""
-        if self.pride is not None:
-            self.pride = None
-            self.creatures["Carviz"] = [] 
-            self.numCarviz -= self.pride.numComponents
+        self.creatures["Carviz"] = [car for car in self.creatures["Carviz"] if car not in pride.getComponents()]
+        self.numCarviz -= pride.numComponents
+        self.prides.remove(pride)
 
     def getErbastList(self):
         """Get a list of all Erbast inhabitants in the cell"""
@@ -490,8 +481,8 @@ class LandCell(Cell):
     def getHerd(self):
         return self.herd
     
-    def getPride(self):
-        return self.pride
+    def getPrides(self):
+        return self.prides
     
     def __repr__(self):
         return f"LandCell {self.coords}"

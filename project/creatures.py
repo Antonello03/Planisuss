@@ -360,7 +360,6 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
 
         self.numComponents = len(components)
         self.neighborhoodDistance = neighborhoodDistance
-        self.groupSociality = 0
     
     def getGroupSociality(self):
         totSocial = 0
@@ -599,7 +598,7 @@ class Pride(SocialGroup):
     ID = 1
 
     def __init__(self, components: list[Carviz]):
-        super().__init__(self, components, neighborhoodDistance=NEIGHBORHOOD_PRIDE)
+        super().__init__(components, neighborhoodDistance = NEIGHBORHOOD_PRIDE)
         self.id = Carviz.ID
         Carviz.ID += 1
 
@@ -670,8 +669,9 @@ class Pride(SocialGroup):
 
     def joinGroups(self, other: SocialGroup):
         super().joinGroups(other)
-        for el in other:
-            other.pride = self
+        for el in other.getComponents():
+            el.socialGroup = self
+            el.inSocialGroup = True
 
     def __repr__(self):
         return f"Pride {self.id}, components: {self.components}"
