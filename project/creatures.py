@@ -340,6 +340,8 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
     Holds knowledge about the environment
     """   
 
+    GOING_BACK_PENALTY = 0.3
+
     def __init__(self, components : list[Animal], neighborhoodDistance = NEIGHBORHOOD_SOCIAL):
 
         super().__init__()
@@ -362,6 +364,11 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
 
         self.numComponents = len(components)
         self.neighborhoodDistance = neighborhoodDistance
+
+    def updateCoords(self, newCoords:tuple[int,int]):
+        """Should always be used to update Coords"""
+        self.lastCoords = self.coords
+        self.coords = newCoords
     
     def getGroupSociality(self):
         totSocial = 0
@@ -519,7 +526,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
             if cell == worldGrid[self.lastCoords]: #avoid going back
-                desirabilityScores[cell] -= SocialGroup.GOING_BACK_PENALYT
+                desirabilityScores[cell] -= SocialGroup.GOING_BACK_PENALTY
 
         # Staying likability evaluation
         desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells

@@ -400,9 +400,8 @@ class LandCell(Cell):
                 self.herd.addComponent(animal)
 
         if isinstance(animal, Carviz): #TODO Carviz logic
-            if self.pride is None:
-                self.creatures["Carviz"].append(animal)
-                self.numCarviz += 1
+            self.creatures["Carviz"].append(animal)
+            self.numCarviz += 1
 
     def removeAnimal(self, animal:'Animal'): #TODO remove carviz
         """Remove an animal from the inhabitants list"""
