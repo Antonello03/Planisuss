@@ -433,7 +433,7 @@ class Interface():
         animal_path = "files//carvizN.jpg" if isinstance(clicked_individual, Carviz) else "files//erbastN.jpg"
         animal_art = Image.open(animal_path)
         ax_animal.imshow(animal_art, extent=[0.0, 1.0, 0.0, 1.0])
-        ax_animal.text(0.5, -0.1, f"Individual's ID: {clicked_individual.ID} ", 
+        ax_animal.text(0.5, -0.1, f"Individual's ID: {clicked_individual.id} ", 
                     fontsize=8, ha='center', va='center', transform=ax_animal.transAxes)
         ax_animal.axis('off')
         return ax_animal
