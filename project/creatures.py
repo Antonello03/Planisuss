@@ -3,8 +3,6 @@ import numpy as np
 import sys
 import math
 
-#TODO - define graze for herds
-
 def getDirection(myCoords:tuple ,otherCoords:tuple):
     """given to coords tuple return direction"""
     myX, myY = myCoords
@@ -342,9 +340,7 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
     Holds knowledge about the environment
     """   
 
-    GOING_BACK_PENALYT = 0.3
-
-    def __init__(self, components : list[Animal]):
+    def __init__(self, components : list[Animal], neighborhoodDistance = NEIGHBORHOOD_SOCIAL):
 
         super().__init__()
         self.coords = (-1,-1)
@@ -365,14 +361,8 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
             el.socialGroup = self
 
         self.numComponents = len(components)
-        self.neighborhoodDistance = NEIGHBORHOOD_SOCIAL
-        self.groupSociality = 0
+        self.neighborhoodDistance = neighborhoodDistance
     
-    def updateCoords(self, newCoords:tuple[int,int]):
-        """Should always be used to update Coords"""
-        self.lastCoords = self.coords
-        self.coords = newCoords
-
     def getGroupSociality(self):
         totSocial = 0
         for component in self.components:
@@ -412,6 +402,16 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
     def loseComponent(self, animal:Animal): #TODO if we are alone? Destroy herd? is this happening somewhere else?
         if not isinstance(animal, Animal):
             raise ValueError("animal must be an instance of Animal")
+        
+        if len(self.components) == 2:
+            self.components.remove(animal)
+            animal.inSocialGroup = False
+            animal.socialGroup = None
+            self.components[0].inSocialGroup = False
+            self.components[0].socialGroup = None
+            self.components.remove(self.components[0])
+            self.numComponents == 0
+            return "No more Group"
         
         self.components.remove(animal)
         animal.inSocialGroup = False
@@ -455,7 +455,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
     ID = 1
 
     def __init__(self, components: list[Erbast]):
-        super().__init__(components)
+        super().__init__(components, neighborhoodDistance = NEIGHBORHOOD_HERD)
         self.id = Herd.ID
         Herd.ID += 1
         self.preferredDirection = None
@@ -468,9 +468,6 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         - dangers at a longer distance
         - TODO 
         """
-        #each animal ranks the choices individually assigning them a desirability score from 0-1,
-        # TODO then if the socialgroup decision is acceptable (scaled by the socialattitude) it is followed
-
         # First of all the Herd makes a decision based on its knowledge
 
         neighborhood = self.getNeighborhood(worldGrid, d = self.neighborhoodDistance)
@@ -606,18 +603,80 @@ class Pride(SocialGroup):
     ID = 1
 
     def __init__(self, components: list[Carviz]):
-        super().__init__(self, components)
+        super().__init__(components, neighborhoodDistance = NEIGHBORHOOD_PRIDE)
         self.id = Carviz.ID
         Carviz.ID += 1
 
-    def rankMoves(self, worldGrid:'WorldGrid'):
-        #each animal ranks the choices individually assigning them a desirability score from 0-1, then if the socialgroup decision is acceptable (scaled by the socialattitude) it is followed
-        pass
+    def rankMoves(self, worldGrid:'WorldGrid'): #done, ig
+
+        neighborhood = self.getNeighborhood(worldGrid, d = self.neighborhoodDistance)
+        reachableCells = self.getNeighborhood(worldGrid, d = 1)
+        LandCell = getattr(sys.modules['world'], 'LandCell')
+        neighborhood = [el for el in neighborhood if isinstance(el, LandCell)]
+        reachableCells = [el for el in reachableCells if isinstance(el, LandCell)]
+        # print(f"neighborhood Cells: {[cell.getCoords() for cell in neighborhood]}\nreachableCells: {[cell.getCoords() for cell in reachableCells]}")
+        desirabilityScores = {cell:0 for cell in neighborhood}
+        groupSociality = self.getGroupSociality()
+        groupEnergy = self.getGroupEnergy()
+        presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
+
+        for cell in desirabilityScores:
+
+            desirabilityScores[cell] += cell.numErbast * Carviz.ERBAST_NEED
+
+            # also neighbouring cells, if in range, should become more attractive, but a bit less
+            if(cell.numErbast > 0):
+                x,y = cell.getCoords()
+                # TODO - should use a function...
+                nearbyCords = [(x-1, y-1),(x, y-1),(x+1, y-1),(x-1, y+1),(x, y+1),(x+1, y+1),(x-1, y),(x+1, y)]
+                nearbyCords_2 = [(x-2, y-2),(x-1, y-2),(x, y-2),(x+1, y-2),(x+2, y-2),
+                                 (x-2, y+2),(x-1, y+2),(x, y+2),(x+1, y+2),(x+2, y+2),
+                                 (x-2, y-1),(x+2, y-1),(x-2, y),(x+2, y),(x-2, y+1),(x+2, y+1)]
+                nearbyCoords_3 = [(x-3, y-3),(x-2, y-3),(x-1, y-3),(x, y-3),(x+1, y-3),(x+2, y-3),(x+3, y-3),
+                                    (x-3, y+3),(x-2, y+3),(x-1, y+3),(x, y+3),(x+1, y+3),(x+2, y+3),(x+3, y+3),
+                                    (x-3, y-2),(x+3, y-2),(x-3, y-1),(x+3, y-1),(x-3, y),(x+3, y),(x-3, y+1),(x+3, y+1),(x-3, y+2),(x+3, y+2)]
+                nearbyCells = [worldGrid[coords] for coords in nearbyCords]
+                nearbyCells_2 = [worldGrid[coords] for coords in nearbyCords_2]
+                nearbyCells_3 = [worldGrid[coords] for coords in nearbyCoords_3]
+
+                CellsInRange = [cell for cell in nearbyCells if cell in reachableCells]
+                CellsInRange_2 = [cell for cell in nearbyCells_2 if cell in reachableCells]
+                CellsInRange_3 = [cell for cell in nearbyCells_3 if cell in reachableCells]
+
+                for cell in CellsInRange:
+                    desirabilityScores[cell] += cell.numErbast * 0.6
+
+                for cell in CellsInRange_2:
+                    desirabilityScores[cell] += cell.numErbast * 0.4
+
+                for cell in CellsInRange_3:
+                    desirabilityScores[cell] += cell.numErbast * 0.3
+
+            # Vegetob is not a priority for Carvizes, but it makes sense for them to look for Erbasts in food rich zones
+            desirabilityScores[cell] += cell.getVegetobDensity() * Carviz.VEG_NEED
+            desirabilityScores[cell] = round(desirabilityScores[cell], 2)
+
+            #do we want to meet other carvizes?
+            if presentCell != cell:
+                if presentCell.numCarviz < cell.numCarviz:
+                    desirabilityScores[cell] += cell.numCarviz * (self.getGroupSociality() - 0.5) # A Pride might want to stay alone
+                elif cell.numCarviz > 0:
+                    desirabilityScores[presentCell] += cell.numCarviz * (self.getGroupSociality() - 0.5)
+
+        desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells
+        
+        # Staying likability evaluation - carviz are very unlikely to stay still, they're constantly looking for Erbasts
+        desirabilityScores[presentCell] -= ((100 - self.getGroupEnergy())**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT) #when the energy is low a prey must be found
+        desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
+
+        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
+        return returnDict
 
     def joinGroups(self, other: SocialGroup):
         super().joinGroups(other)
-        for el in other:
-            other.pride = self
+        for el in other.getComponents():
+            el.socialGroup = self
+            el.inSocialGroup = True
 
     def __repr__(self):
         return f"Pride {self.id}, components: {self.components}"

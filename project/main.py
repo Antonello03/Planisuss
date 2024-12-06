@@ -1,6 +1,6 @@
 from interface import Interface
 from world import Environment
-from creatures import Erbast, Carviz, Herd
+from creatures import Erbast, Carviz, Herd, Pride
 from pprint import pprint
 import numpy as np
 
