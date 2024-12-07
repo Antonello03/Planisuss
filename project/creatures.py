@@ -50,6 +50,12 @@ def getCellInDirection(myCoords:tuple, direction:str):
         return (x-1,y-1)
     else:
         return myCoords
+    
+def checkCoordsInBoundary(coords):
+    if coords[0] >= 0 and coords[0] < NUMCELLS and coords[1] >= 0 and coords[1] < NUMCELLS:
+        return True
+    else:
+        return False
 
 class Species():
     """Class from which Erbasts, Carvizes, Herds and Prides inherit"""
@@ -135,7 +141,7 @@ class Animal(Species):
             if self.age % 10 == 0:
                 self.energy -= AGING
         else:
-            raise RuntimeError("Cannot age a dead animal")
+            raise RuntimeError(f"Cannot age a dead animal: {self}")
 
 
     def moveChoice(self, worldGrid: 'WorldGrid') -> dict['Species', tuple[int, int]]:
@@ -182,7 +188,7 @@ class Erbast(Animal):
     """
     ID = 1
 
-    CARVIZ_DANGER = 0.75
+    CARVIZ_DANGER = 1.5
     VEG_NEED = 0.01
 
     ENERGY_WEIGHT1 = 2 # scales how much energy matters overall
@@ -224,7 +230,7 @@ class Erbast(Animal):
                 self.preferredDirectionIntensity = 1 # raise intensity
 
                 nearbyCords = [(x-1, y-1),(x, y-1),(x+1, y-1),(x-1, y+1),(x, y+1),(x+1, y+1),(x-1, y),(x+1, y)]
-                nearbyCells = [worldGrid[coords] for coords in nearbyCords]
+                nearbyCells = [worldGrid[coords] for coords in nearbyCords if checkCoordsInBoundary(coords)]
                 CellsInRange = [cell for cell in nearbyCells if cell in neighborhood]
                 for cell in CellsInRange:
                     # print(f"cell {cell.getCoords()} is dangerous, it's desirability is now: {desirabilityScores[cell]}")
@@ -241,11 +247,9 @@ class Erbast(Animal):
                     desirabilityScores[presentCell] += cell.numErbast * self.socialAttitude
 
             desirabilityScores[cell] += cell.getVegetobDensity() * Erbast.VEG_NEED
-            desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
         # Staying likability evaluation
         desirabilityScores[presentCell] += stayingNeed
-        desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
         
         # Running away from carviz
         escapeCellCoords = getCellInDirection(presentCell.getCoords(), self.preferredDirection)
@@ -253,8 +257,10 @@ class Erbast(Animal):
         if escapeCell in neighborhood and escapeCell != presentCell and self.preferredDirectionIntensity > Erbast.ESCAPE_THRESHOLD:
             # print(f"Oh no I'm {self}, I'm in {self.getCoords()} and there's a Carviz nearby, better go in {escapeCell.getCoords()}")
             desirabilityScores[escapeCell] += self.preferredDirectionIntensity
-            desirabilityScores[escapeCell] = round(desirabilityScores[escapeCell],2)
             self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
+
+        for cell in desirabilityScores:
+            desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
         returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
         return returnDict
@@ -310,13 +316,12 @@ class Carviz(Animal):
             if(cell.numErbast > 0):
                 x,y = cell.getCoords()
                 nearbyCords = [(x-1, y-1),(x, y-1),(x+1, y-1),(x-1, y+1),(x, y+1),(x+1, y+1),(x-1, y),(x+1, y)]
-                nearbyCells = [worldGrid[coords] for coords in nearbyCords]
+                nearbyCells = [worldGrid[coords] for coords in nearbyCords if checkCoordsInBoundary(coords)]
                 CellsInRange = [cell for cell in nearbyCells if cell in reachableCells]
                 for cell in CellsInRange:
                     desirabilityScores[cell] += cell.numErbast * 0.6
 
             desirabilityScores[cell] += cell.getVegetobDensity() * Carviz.VEG_NEED
-            desirabilityScores[cell] = round(desirabilityScores[cell], 2)
             
             #do we want to meet other carvizes?
             if presentCell != cell:
@@ -327,9 +332,11 @@ class Carviz(Animal):
 
         # Staying likability evaluation - carviz are very unlikely to stay still, they're constantly looking for Erbasts
         desirabilityScores[presentCell] -= ((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT) #when the energy is low a prey must be found
-        desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
 
-        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
+        for cell in desirabilityScores:
+            desirabilityScores[cell] = round(desirabilityScores[cell], 2)
+
+        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells}
         return returnDict
 
     def __repr__(self):
@@ -342,14 +349,14 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
 
     GOING_BACK_PENALTY = 0.3
 
-    def __init__(self, components : list[Animal], neighborhoodDistance = NEIGHBORHOOD_SOCIAL):
+    def __init__(self, components : list[Animal], neighborhoodDistance = NEIGHBORHOOD_SOCIAL, memory = MEMORY_SOCIAL):
 
         super().__init__()
         self.coords = (-1,-1)
-        self.lastCoords = (-1,-1)
+        self.lastCoords = []
         if (len(components) > 0):
             self.coords = components[0].getCoords()
-            self.lastCoords = self.coords
+            self.lastCoords.append(self.coords)
             for animal in components:
                 if not isinstance(animal, Animal):
                     raise Exception(f"All Individuals should be Animals, received instead {animal}")
@@ -364,10 +371,11 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
 
         self.numComponents = len(components)
         self.neighborhoodDistance = neighborhoodDistance
+        self.memory = memory
 
     def updateCoords(self, newCoords:tuple[int,int]):
         """Should always be used to update Coords"""
-        self.lastCoords = self.coords
+        self.lastCoords.append(self.coords)
         self.coords = newCoords
     
     def getGroupSociality(self):
@@ -414,17 +422,24 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
             self.components.remove(animal)
             animal.inSocialGroup = False
             animal.socialGroup = None
-            self.components[0].inSocialGroup = False
-            self.components[0].socialGroup = None
-            self.components.remove(self.components[0])
+            lastAnimal = self.components[0]
+            lastAnimal.inSocialGroup = False
+            lastAnimal.socialGroup = None
+            self.components.remove(lastAnimal)
             self.numComponents == 0
-            return "No more Group"
+            return  {
+                "result": "Group Disbanded",
+                "individuals":[animal,lastAnimal]
+                }
         
         self.components.remove(animal)
         animal.inSocialGroup = False
         animal.socialGroup = None
         self.numComponents -= 1
-        return animal
+        return {
+            "result": "All Good",
+            "lost individual": animal
+        }
     
     def moveChoice(self, worldGrid: 'WorldGrid', applyConsequences:bool = True) -> dict['Species', tuple[int, int]]:
         """
@@ -441,7 +456,12 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
             if individualValues[groupdecidedCoords] < -c.socialAttitude: #if individual preference is lower than the negative social attitude for the group choice
                 leavingIndividualsAndDirection[c] = max(individualValues, key=individualValues.get) # get individual preferred movement
                 if applyConsequences:
-                    self.loseComponent(c)
+                    result = self.loseComponent(c)
+                    if result["result"] == 'Group Disbanded':
+                        lastAnimal = result["individuals"][1]
+                        lAValues = lastAnimal.rankMoves(worldGrid)
+                        leavingIndividualsAndDirection[lastAnimal] = max(lAValues, key=lAValues.get)
+                        return leavingIndividualsAndDirection
         
         choices = {self:groupdecidedCoords,**leavingIndividualsAndDirection}
         return choices
@@ -506,8 +526,8 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
                                  (x-2, y+2),(x-1, y+2),(x, y+2),(x+1, y+2),(x+2, y+2),
                                  (x-2, y-1),(x+2, y-1),(x-2, y),(x+2, y),(x-2, y+1),(x+2, y+1)]
 
-                nearbyCells = [worldGrid[coords] for coords in nearbyCords]
-                nearbyCells_2 = [worldGrid[coords] for coords in nearbyCords_2]
+                nearbyCells = [worldGrid[coords] for coords in nearbyCords if checkCoordsInBoundary(coords)]
+                nearbyCells_2 = [worldGrid[coords] for coords in nearbyCords_2 if checkCoordsInBoundary(coords)]
 
                 CellsInRange = [cell for cell in nearbyCells if cell in reachableCells]
                 CellsInRange_2 = [cell for cell in nearbyCells_2 if cell in reachableCells]
@@ -523,25 +543,25 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
                 desirabilityScores[cell] += cell.numErbast * groupSociality
 
             desirabilityScores[cell] += cell.getVegetobDensity() * Erbast.VEG_NEED
-            desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
-            if cell == worldGrid[self.lastCoords]: #avoid going back
+            if cell in {worldGrid[coords] for coords in self.lastCoords[max(-len(self.lastCoords),-self.memory):]}: #avoid going back
                 desirabilityScores[cell] -= SocialGroup.GOING_BACK_PENALTY
 
         # Staying likability evaluation
         desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells
         desirabilityScores[presentCell] +=  15 * math.exp(-Erbast.ENERGY_WEIGHT2 * groupEnergy) - Erbast.ENERGY_WEIGHT1
-        desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
         
         #Runnin away from Carviz
         escapeCellCoords = getCellInDirection(presentCell.getCoords(), self.preferredDirection)
-        escapeCell = worldGrid[escapeCellCoords]
-        if escapeCell in neighborhood and escapeCell != presentCell and self.preferredDirectionIntensity > Erbast.ESCAPE_THRESHOLD:
-            # print(f"Oh no I'm {self}, I'm in {self.getCoords()} and there's a Carviz nearby, better go in {escapeCell.getCoords()}")
-            desirabilityScores[escapeCell] += self.preferredDirectionIntensity
-            desirabilityScores[escapeCell] = round(desirabilityScores[escapeCell],2)
-            self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
+        if checkCoordsInBoundary(escapeCellCoords):
+            escapeCell = worldGrid[escapeCellCoords]
+            if escapeCell in neighborhood and escapeCell != presentCell and self.preferredDirectionIntensity > Erbast.ESCAPE_THRESHOLD:
+                # print(f"Oh no I'm {self}, I'm in {self.getCoords()} and there's a Carviz nearby, better go in {escapeCell.getCoords()}")
+                desirabilityScores[escapeCell] += self.preferredDirectionIntensity
+                self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
 
+        for cell in desirabilityScores:
+            desirabilityScores[cell] = round(desirabilityScores[cell], 2)
         returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
         return returnDict
 
@@ -642,9 +662,9 @@ class Pride(SocialGroup):
                 nearbyCoords_3 = [(x-3, y-3),(x-2, y-3),(x-1, y-3),(x, y-3),(x+1, y-3),(x+2, y-3),(x+3, y-3),
                                     (x-3, y+3),(x-2, y+3),(x-1, y+3),(x, y+3),(x+1, y+3),(x+2, y+3),(x+3, y+3),
                                     (x-3, y-2),(x+3, y-2),(x-3, y-1),(x+3, y-1),(x-3, y),(x+3, y),(x-3, y+1),(x+3, y+1),(x-3, y+2),(x+3, y+2)]
-                nearbyCells = [worldGrid[coords] for coords in nearbyCords]
-                nearbyCells_2 = [worldGrid[coords] for coords in nearbyCords_2]
-                nearbyCells_3 = [worldGrid[coords] for coords in nearbyCoords_3]
+                nearbyCells = [worldGrid[coords] for coords in nearbyCords if checkCoordsInBoundary(coords)]
+                nearbyCells_2 = [worldGrid[coords] for coords in nearbyCords_2 if checkCoordsInBoundary(coords)]
+                nearbyCells_3 = [worldGrid[coords] for coords in nearbyCoords_3 if checkCoordsInBoundary(coords)]
 
                 CellsInRange = [cell for cell in nearbyCells if cell in reachableCells]
                 CellsInRange_2 = [cell for cell in nearbyCells_2 if cell in reachableCells]

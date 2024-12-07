@@ -140,7 +140,7 @@ class Interface():
         self.env.nextDay()
         self.day_text.set_text(f"Day: {self.currentDay}")
         
-        print(f"{frameNum} and {self.currentDay}")
+        # print(f"{frameNum} and {self.currentDay}")
         # newGrid = self.env.getGrid()
         # rgbGrid = self.gridToRGB(newGrid)
 
@@ -194,7 +194,7 @@ class Interface():
     def draw_vegetob(self, cell, i, j):
         cell_density = cell.getVegetobDensity()
         # print(f"cell density: {cell_density}")          
-        green_intensity = int((cell_density / 100) * 255) / 255
+        green_intensity = int((cell_density / MAX_GROWTH) * 255) / 255
         color_vegetob = (0, green_intensity, 0)
         rectangle = plt.Rectangle((j - 0.5, i - 0.5), 1, 1, color=color_vegetob, alpha=0.4)
         self.ax_plot.add_artist(rectangle)

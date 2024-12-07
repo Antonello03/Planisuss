@@ -235,10 +235,9 @@ class Environment():
                 stayingCreatures.append(c)
                 nextCoords.pop(c)
             else: # moving
-                c.changeEnergy(-1) # energy cost for moving
+                c.changeEnergy(ENERGY_LOSS) # energy cost for moving
 
         self.move(nextCoords)
-
 
         # 3 - GRAZING
         stayingErbast = [e for e in stayingCreatures if isinstance(e, Erbast)]
@@ -310,7 +309,7 @@ class WorldGrid():
             for i in range(NUMCELLS):
                 for j in range(NUMCELLS):
                     if values_grid[i][j] > threshold:
-                        grid[i][j] = LandCell((i, j), Vegetob(density=25 + random.randint(-10, 10)))
+                        grid[i][j] = LandCell((i, j), Vegetob(density=40 + random.randint(-30, 40)))
                     else:
                         grid[i][j] = WaterCell((i, j))
         return grid
@@ -407,11 +406,13 @@ class LandCell(Cell):
         """Remove an animal from the inhabitants list"""
         if isinstance(animal, Erbast):
             if animal in self.creatures["Erbast"]:
-                if self.numErbast <= 1:
+                if self.numErbast <= 1 or len(self.herd.getComponents()) == 0:
                     self.numErbast -= 1
                     self.creatures["Erbast"].remove(animal)
+                    self.herd = None
                 elif self.numErbast == 2:
                     presentHerd = self.herd
+                    # print(f"numE: {self.numErbast}, removing one creature from: {presentHerd}, the creature is {animal}")
                     presentHerd.loseComponent(animal)
                     remainingAnimal = presentHerd.getComponents()[0]
                     remainingAnimal.inSocialGroup = False
