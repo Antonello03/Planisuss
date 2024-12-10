@@ -322,10 +322,6 @@ class Environment():
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
 
-        for c in self.creatures["Carviz"]:
-            if c.getEnergy() <= 10:
-                print(f"look {c}")
-
         self.day += 1
 
         print(f"day {self.day}")
