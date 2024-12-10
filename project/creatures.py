@@ -2,6 +2,9 @@ from planisuss_constants import *
 import numpy as np
 import sys
 import math
+from typing import TYPE_CHECKING # to avoid vscode telling me i'm not including libraries that would cause a circular import
+if TYPE_CHECKING:
+    from world import WorldGrid
 
 def getDirection(myCoords:tuple ,otherCoords:tuple):
     """given to coords tuple return direction"""
