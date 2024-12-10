@@ -21,7 +21,10 @@ carv2 = Carviz((24, 24))
 pride1 = Pride([carv1,carv2])
 environment.add(pride1)
 
-carv3 = Carviz((25,25))
-environment.add(carv3)
+carv3 = Carviz((26,26))
+carv4 = Carviz((26,26), SocialAttitude = 0.8)
+carv5 = Carviz((26,26))
+pride2 = Pride([carv3,carv4,carv5])
+environment.add(pride2)
 
 animation.run_simulation()

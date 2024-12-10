@@ -1,5 +1,6 @@
+from collections import defaultdict
 import random
-from creatures import Vegetob, Erbast, Carviz, Animal, SocialGroup, Herd, Pride, Species
+from creatures import Vegetob, Erbast, Carviz, Animal, SocialGroup, Herd, Pride, Species, DeadCreature
 from planisuss_constants import *
 from typing import Union
 import numpy as np
@@ -23,6 +24,7 @@ class Environment():
             "Erbast" : [],
             "Carviz" : []
         }
+        self.deadCreatures = []
         self.totErbast = 0
         self.totCarviz = 0
         self.day = -1
@@ -55,6 +57,10 @@ class Environment():
     def getAloneCarviz(self) -> list[Carviz]:
         """Get a list of Carviz that are not in a social group"""
         return [c for c in self.creatures["Carviz"] if c.inSocialGroup == False]
+    
+    def getDeadCreatures(self) -> list[DeadCreature]:
+        """Get list of DeadCreatures in the environment"""
+        return self.deadCreatures
 
     def updateGrid(self, newGrid):
         self.world.updateGrid(newGrid)
@@ -93,6 +99,10 @@ class Environment():
             self.creatures["Carviz"].append(animal)
             self.getGrid()[x][y].addAnimal(animal)
             self.totCarviz += 1
+    
+    def addDeadCreature(self, deadCreature:DeadCreature):
+        self.deadCreatures.append(deadCreature)
+        return self.deadCreatures
 
     def addGroup(self, group:SocialGroup):
         x,y = group.getCoords()
@@ -204,8 +214,117 @@ class Environment():
         grazedAmount = grazer.graze(availableVegetobs) # consume specified amount and update energy
         grazingCell.reduceVegetob(grazedAmount) # reduce vegetob density in cell
 
+    def getCellSpeciesDict(self, species: list[Species]) -> dict[tuple,Species]:
+        """
+        Given the interested Species, returns a dict where the keys are the coordinates of the cells and the values are the inhabitants
+        """
+        cellSpecies = defaultdict(list)
+        for c in species:
+            cellSpecies[c.getCoords()].append(c)
+
+        return cellSpecies
+
+    def joinCarvizesToPride(self):
+        """
+        Adds all the carviz that are in the same cell of a Pride to the pride with the highest socAttitude
+        """
+
+        cellSpecies = self.getCellSpeciesDict(self.getAloneCarviz() + self.getPrides())
+
+        for coords in cellSpecies:
+            mostSocialPride = None
+            for pride in cellSpecies[coords]: # find best pride
+                if isinstance(pride, Pride):
+                    if not mostSocialPride:
+                        mostSocialPride = pride
+                    else:
+                        if pride.getGroupSociality() > mostSocialPride.getGroupEnergy():
+                            mostSocialPride = pride
+
+            if mostSocialPride:
+                for carviz in cellSpecies[coords]: # assign carvizes to pride
+                    if isinstance(carviz,Carviz):
+                        mostSocialPride.addComponent(carviz)
+
+    def fight(self, pride1:Pride, pride2:Pride) -> Pride:
+        """ takes two prides, the two strongest individuals fight to death until no more individuals are present, returns the winning pride """
+        p1Carvizes = sorted(pride1.getComponents(), key = lambda x : x.getEnergy())
+        p2Carvizes = sorted(pride2.getComponents(), key = lambda x : x.getEnergy())
+        while(len(p1Carvizes) > 0 and len(p2Carvizes) > 0):
+            c1 = p1Carvizes[-1]
+            c2 = p2Carvizes[-1]
+            c1Energy = c1.getEnergy()
+            c2Energy = c2.getEnergy()
+            if c1Energy > c2Energy: # c1 wins
+                c2.die()
+                self.addDeadCreature(DeadCreature(c2, self.day))
+                self.remove(c2)
+                p2Carvizes.pop()
+                c1.changeEnergy(c2Energy)
+                p1Carvizes.sort(key = lambda x : x.getEnergy())
+            elif c1Energy < c2Energy:
+                c1.die()
+                self.addDeadCreature(DeadCreature(c1, self.day))
+                self.remove(c1)
+                p1Carvizes.pop()
+                c1.changeEnergy(c2Energy)
+                p2Carvizes.sort(key = lambda x : x.getEnergy())
+            else:
+                c1.die()
+                c2.die()
+                self.addDeadCreature(DeadCreature(c1, self.day))
+                self.addDeadCreature(DeadCreature(c2, self.day))
+                self.remove(c1)
+                self.remove(c2)
+                p1Carvizes.pop()
+                p2Carvizes.pop()
+
+        if (len(p1Carvizes) == 0):
+            pride1.disband()
+            return pride2
+        else:
+            pride2.disband()
+            return pride1
+
+    def struggle(self):
+        """
+        If  more  than  one  Carviz  pride  reach  the  cell, they  evaluate  the  joining  in  a  single  pride.
+        The evaluation is made on pride-basis, using the social attitude of their members.
+        If one of the pridesdecide not to join, a fight takes place. In case of more than two prides reaching the same cell,
+        the above procedure is applied iteratively to pairs of prides (i.e.,  starting from those with lessindividuals).
+        The prides that decided to join can form the single pride before starting the figh
+        """
+
+        cellSpecies = self.getCellSpeciesDict(self.getPrides())
+        for cellCoords in cellSpecies:
+            if len(cellSpecies[cellCoords]) >= 2:
+                prideOrdered = sorted([pride for pride in cellSpecies[cellCoords]], key = lambda x:x.numComponents, reverse = True)
+                pride1 = None
+                pride2 = None
+                while prideOrdered:
+                    if not pride1:
+                        pride1 = prideOrdered.pop()
+                        pride2 = prideOrdered.pop()
+                    else:
+                        pride2 = prideOrdered.pop()
+                    
+                    if pride1.getGroupSociality() + pride2.getGroupSociality() >= 0.9: # join
+                        if pride1.numComponents >= pride2.numComponents:
+                            pride1.joinGroups(pride2)
+                        else:
+                            pride2.joinGroups(pride1)
+                            pride1 = pride2
+                    else:
+                        winner = self.fight(pride1,pride2)
+                        pride1 = winner
+                
+
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
+
+        for c in self.creatures["Carviz"]:
+            if c.getEnergy() <= 10:
+                print(f"look {c}")
 
         self.day += 1
 
@@ -214,13 +333,12 @@ class Environment():
         grid = self.getGrid()
         cells = grid.reshape(-1)
         landCells = [landC for landC in cells if isinstance(landC,LandCell)]
-        # 1 - GROWING
-        for el in landCells:
-            el.growVegetob()
+        # 3.1 - GROWING
+        for cell in landCells:
+            cell.growVegetob()
 
-        # 2 MOVING
+        # 3.2 - MOVEMENT
 
-        # Erbast, Carviz and Herds move
         species = self.getAloneErbasts() + self.getHerds() + self.getAloneCarviz() + self.getPrides()
 
         stayingCreatures = []
@@ -230,23 +348,54 @@ class Environment():
             nextCoords.update(c.moveChoice(worldGrid = grid))
 
         nextCoords_tmp = nextCoords.copy()
+        aliveDict = dict()
+
         for c in nextCoords_tmp:
             if c.getCoords() == nextCoords[c]: # staying
                 stayingCreatures.append(c)
                 nextCoords.pop(c)
             else: # moving
-                c.changeEnergy(ENERGY_LOSS) # energy cost for moving
-
+                aliveDict.update(c.changeEnergy(ENERGY_LOSS)) # energy cost for moving
+                
         self.move(nextCoords)
 
-        # 3 - GRAZING
-        stayingErbast = [e for e in stayingCreatures if isinstance(e, Erbast)]
+        if aliveDict:
+            for creature in aliveDict:
+                if not aliveDict[creature]:
+                    self.addDeadCreature(DeadCreature(creature,self.day))
+                    self.remove(creature)
+                    creature.die()
+
+        # 3.3 - GRAZING
+        stayingErbast = [e for e in stayingCreatures if isinstance(e, Erbast) or isinstance(e,Herd)]
         for e in stayingErbast:
             self.graze(e) #this includes cell vegetob reduction, herd and individual energy increase
 
-        # AGING
+        # 3.4 - STRUGGLE
+
+        # Erbasts are automatically merged in Herds from LandCell internal updates when trying to add them
+
+        # two important things are going to happen: Alone carvizes joining a pride and pride struggling
+        # the order here matters and would promote or not change the win of the group with the higher social Attitude
+        # in reality this factors are random, so also here the order will be random
+
+        orderCarvizJoins = random.randint(0,1)
+
+        if orderCarvizJoins == 0:
+            self.joinCarvizesToPride()
+            self.struggle()
+        elif orderCarvizJoins == 1:
+            self.struggle()
+            self.joinCarvizesToPride()
+        
+
+        # 3.5 - SPAWNING
         for c in self.creatures["Erbast"] + self.creatures["Carviz"]:
-            c.ageStep()
+            alive = c.ageStep()
+            if not alive:
+                c.die()
+                self.addDeadCreature(DeadCreature(c, self.day))
+                self.remove(c)
 
         return self.getGrid()
     
@@ -406,11 +555,11 @@ class LandCell(Cell):
         """Remove an animal from the inhabitants list"""
         if isinstance(animal, Erbast):
             if animal in self.creatures["Erbast"]:
-                if self.numErbast <= 1 or len(self.herd.getComponents()) == 0:
+                if self.numErbast <= 1 or (self.herd and len(self.herd.getComponents()) == 0):
                     self.numErbast -= 1
                     self.creatures["Erbast"].remove(animal)
                     self.herd = None
-                elif self.numErbast == 2:
+                elif self.numErbast == 2 and self.herd:
                     presentHerd = self.herd
                     # print(f"numE: {self.numErbast}, removing one creature from: {presentHerd}, the creature is {animal}")
                     presentHerd.loseComponent(animal)
@@ -419,10 +568,13 @@ class LandCell(Cell):
                     remainingAnimal.socialGroup = None
                     self.removeHerd()
                     self.addAnimal(remainingAnimal)
-                else: 
+                elif self.herd: 
                     self.creatures["Erbast"].remove(animal)
                     self.numErbast -= 1
                     self.herd.loseComponent(animal)
+                elif not self.herd: # quick, possibly wrong, fix
+                    self.numErbast -= 1
+                    self.creatures["Erbast"].remove(animal)
             else:
                 raise Exception(f"{animal} is not a creature of the cell: {self}, hence it can't be removed")
         elif isinstance(animal, Carviz):
