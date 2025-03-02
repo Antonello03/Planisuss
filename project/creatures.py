@@ -128,6 +128,7 @@ class Animal(Species):
         elif self.energy + amount < 0:
             self.energy = 0
             self.alive = False
+            print(f"{self} died of starvation")
         else:
             self.energy = MAX_ENERGY
         return {self:self.alive}
@@ -142,10 +143,15 @@ class Animal(Species):
             else: 
                 self.age = self.lifetime
                 self.alive = False
+                print(f"{self} died of old age")
             if self.age % 10 == 0:
                 self.energy -= AGING
+                if self.energy <= 0:
+                    self.energy = 0
+                    self.alive = False
+                    print(f"{self} died of starvation due to aging")
         else:
-            raise RuntimeError(f"Cannot age a dead animal: {self}")
+            raise RuntimeError(f"Cannot age a dead animal: {self}, age: {self.age}, lifetime: {self.lifetime}")
         
         return self.alive
 
@@ -485,24 +491,30 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         self.numComponents = 0
         return self
 
-    def moveChoice(self, worldGrid: 'WorldGrid', applyConsequences:bool = True) -> dict['Species', tuple[int, int]]:
+    def moveChoice(self, worldGrid: 'WorldGrid') -> dict['Species', tuple[int, int]]:
         """
         In this method the group decision is assessed and eventual leaving components are identified with their preferred direction,
         if applyConsequences is True, leaving individuals will be removed from the herd
         """
+
+
         moveValues = self.rankMoves(worldGrid)
         groupdecidedCoords = max(moveValues, key=moveValues.get)
-        # print(f"{self} choosed:\n {self.rankMoves(worldGrid)}")
+
+        print(f"Group {self}, components: {self.getComponents()} want to go in {groupdecidedCoords}") # TODO remove
+
         leavingIndividualsAndDirection = dict()
         for c in self.getComponents():
             individualValues = c.rankMoves(worldGrid)
-            # print(self, "in: ",self.getCoords(),"group want to go: ",groupdecidedCoords, "erbast",c, "in ",c.getCoords(), "preference is:",individualValues)
             if individualValues[groupdecidedCoords] < -c.socialAttitude: #if individual preference is lower than the negative social attitude for the group choice
-                leavingIndividualsAndDirection[c] = max(individualValues, key=individualValues.get) # get individual preferred movement
-                if applyConsequences:
-                    result = self.loseComponent(c)
-                    if result["result"] == 'Group Disbanded':
-                        lastAnimal = result["individuals"][1]
+                individualDecidedCoords = max(individualValues, key=individualValues.get)
+                if groupdecidedCoords != individualDecidedCoords: #and the individual choice is different from the group choice
+                    leavingIndividualsAndDirection[c] = individualDecidedCoords # get individual preferred movement
+                    print(self, "in: ",self.getCoords(),"group want to go: ",groupdecidedCoords, "erbast",c, "in ",c.getCoords(), "want to go: ",max(individualValues, key=individualValues.get)) # TODO remove
+                    if self.numComponents == 2:
+                        print(f"The group {self} disbanded, the individuals {self.getComponents()} are now free to go")
+                        components = self.getComponents()
+                        lastAnimal = [x for x in components if x != c][0]
                         lAValues = lastAnimal.rankMoves(worldGrid)
                         leavingIndividualsAndDirection[lastAnimal] = max(lAValues, key=lAValues.get)
                         return leavingIndividualsAndDirection

@@ -53,3 +53,8 @@ random.seed(1)
 initializePopulation("random", 20, 20)
 
 animation.run_simulation()
+
+
+# TWO BIG PROBLEMS
+# CARVIZES DIYNG MULTIPLE TIMES
+# MODIFIED MOVECHOICE BUT KNOW PRIDES ARE NOT CORRECTLY HANDLED
