@@ -150,7 +150,7 @@ class Animal(Species):
         return self.alive
 
     def die(self):
-        if self.inSocialGroup:
+        if isinstance(self, Carviz) and self.inSocialGroup:
             socG = self.socialGroup
             socG.loseComponent(self)
         self.alive = False
@@ -436,7 +436,7 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         other.numComponents = 0
         # TODO -join knowledge        
     
-    def loseComponent(self, animal:Animal): #TODO if we are alone? Destroy herd? is this happening somewhere else?
+    def loseComponent(self, animal:Animal):
         if not isinstance(animal, Animal):
             raise ValueError("animal must be an instance of Animal")
         
@@ -453,20 +453,29 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
                 "result": "Group Disbanded",
                 "individuals":[animal,lastAnimal]
                 }
+        elif len(self.components) == 1:
+            self.components.remove(animal)
+            animal.inSocialGroup = False
+            animal.socialGroup = None
+            self.numComponents -= 1
+            return {
+                "result": "Group Disbanded",
+                "lost individual": animal
+            }
         elif len(self.components) == 0:
             return {
                 "result": "Group Already Disbanded",
                 "individuals":[]
                 }
-        
-        self.components.remove(animal)
-        animal.inSocialGroup = False
-        animal.socialGroup = None
-        self.numComponents -= 1
-        return {
-            "result": "All Good",
-            "lost individual": animal
-        }
+        else:
+            self.components.remove(animal)
+            animal.inSocialGroup = False
+            animal.socialGroup = None
+            self.numComponents -= 1
+            return {
+                "result": "All Good",
+                "lost individual": animal
+            }
 
     def disband(self):
         """Remove all components from group and set numComponents from 0, returns the empty group"""

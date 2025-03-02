@@ -100,12 +100,24 @@ class Environment():
             self.getGrid()[x][y].addAnimal(animal)
             self.totCarviz += 1
 
-    def changeEnergyAndHandleDeath(self, socG:SocialGroup, energy:int):
-        """Change the energy of a social group and handle the death of the individuals"""
-        aliveDict = socG.changeEnergy(energy)
-        for creature in aliveDict:
-            if not aliveDict[creature]:
-                self.creatureDeath(creature)
+    def changeEnergyAndHandleDeath(self, species:Species, energy:int):
+        """Change the energy of a social group or an Animal and handle the death of the individuals"""
+        if isinstance(species, SocialGroup):
+            aliveDict = species.changeEnergy(energy)
+            for creature in aliveDict:
+                if not aliveDict[creature]:
+                    self.creatureDeath(creature)
+
+            return all(aliveDict.values())
+            
+
+        elif isinstance(species, Animal):
+            alive = species.changeEnergy(energy)
+            if not alive:
+                self.creatureDeath(species)
+                return False
+
+        return True
 
     def creatureDeath(self, animal:Animal):
         """Handles the death of a creature"""
@@ -130,7 +142,7 @@ class Environment():
             self.getGrid()[x][y].addGroup(group)
             self.totCarviz += group.numComponents    
 
-    def remove(self, object:Union[Animal, SocialGroup]):
+    def remove(self, object:Species):
         if isinstance(object, Animal):
             self.removeAnimal(object)
         elif isinstance(object, SocialGroup):
@@ -163,7 +175,7 @@ class Environment():
             
         raise Exception(f"animal: {animal}, at coords {animal.getCoords()}, is not present in any cell or is not a Erbast/Carviz")
                                                                 
-    def removeGroup(self, group:SocialGroup): # TODO write code for pride while checking from removeAnimal
+    def removeGroup(self, group:SocialGroup):
         """"""
         if not isinstance(group, SocialGroup):
             raise TypeError(f"{group} is not a social Group")
@@ -173,8 +185,8 @@ class Environment():
         if isinstance(group, Herd):
             if all(el in self.creatures["Erbast"] for el in group.getComponents()):
                 self.totErbast -= group.numComponents
-                self.getGrid()[x][y].removeHerd()
                 self.creatures["Erbast"] = [erb for erb in self.creatures["Erbast"] if erb not in group.getComponents()]
+                self.getGrid()[x][y].removeHerd()
 
         elif isinstance(group, Pride):
             if all(el in self.creatures["Carviz"] for el in group.getComponents()):
@@ -349,7 +361,6 @@ class Environment():
                     else:
                         lastCarviz.changeEnergy(-secondCarvizEnergy)
 
-
     def _hunt_probability(self, victim_strength, group_strength, k=2.5):
         """
         Calculates the probability of the group successfully hunting the victim.
@@ -358,18 +369,17 @@ class Environment():
         probability = 1 / (1 + np.exp(-k * strength_difference))
         return probability
 
-
     def hunt(self):
         """
         hunting, it is assumed that no multiple pride and herd can coexist in the same cell
         The Hunting method adopted is 'Last Blood' with a probability of success based on the difference in strength between the group and the victim and 3 attempts
         """
 
-        cellPrides = self.getCellSpeciesDict(self.getPrides())
+        cellHunters = self.getCellSpeciesDict(self.getPrides() + self.getAloneCarviz())
         cellHerds = self.getCellSpeciesDict(self.getHerds())
         cellErbasts = self.getCellSpeciesDict(self.getAloneErbasts())
 
-        for coords in cellPrides:
+        for coords in cellHunters:
             if coords in cellHerds or coords in cellErbasts:
 
                 # retrieve the strongest erbast and the pride
@@ -379,35 +389,50 @@ class Environment():
                 else:
                     strongestErbast = cellErbasts[coords][0]
 
-                pride = cellPrides[coords][0]
-                numPrideComponents = len(pride.getComponents())
+                hunter = cellHunters[coords][0]
 
                 attempts = 0
 
                 # calculate the outcome of the hunt
                 erbastEnergy = strongestErbast.getEnergy()
-                prideStrength = pride.getGroupEnergy() * numPrideComponents * pride.getGroupSociality()
+                if isinstance(hunter, Pride):
+                    numPrideComponents = len(hunter.getComponents())
+                    hunterStrength = hunter.getGroupEnergy() * numPrideComponents * hunter.getGroupSociality()
+                elif isinstance(hunter, Carviz):
+                    hunterStrength = hunter.getEnergy() * (2 - hunter.getSocialAttitude())
 
                 erbastLuck = random.randint(1,3)
-                huntProbability = self._hunt_probability(erbastEnergy, prideStrength) * erbastLuck
+                huntProbability = self._hunt_probability(erbastEnergy, hunterStrength) * erbastLuck
 
                 while attempts < 3:
 
-                    if random.random() < huntProbability: # death
-                        self.creatureDeath(strongestErbast)
+                    if isinstance(hunter, Pride):
 
-                        # energy sharing
-                        individualShare = erbastEnergy // numPrideComponents
-                        pride.changeEnergy(individualShare)
+                        if random.random() < huntProbability: # death
+                            self.creatureDeath(strongestErbast)
 
-                        # the hungriest carviz gets the spare energy
-                        spareEnergy = erbastEnergy % numPrideComponents
-                        hungriestCarviz = min(pride.getComponents(), key = lambda x : x.getEnergy())
-                        hungriestCarviz.changeEnergy(spareEnergy) 
-                        break
-                    else:
-                        attempts += 1
-                        self.changeEnergyAndHandleDeath(pride, -10)
+                            # energy sharing
+                            individualShare = erbastEnergy // numPrideComponents
+                            hunter.changeEnergy(individualShare)
+
+                            # the hungriest carviz gets the spare energy
+                            spareEnergy = erbastEnergy % numPrideComponents
+                            hungriestCarviz = min(hunter.getComponents(), key = lambda x : x.getEnergy())
+                            hungriestCarviz.changeEnergy(spareEnergy) 
+                            break
+                        else:
+                            attempts += 1
+                            self.changeEnergyAndHandleDeath(hunter, -5)
+                    
+                    elif isinstance(hunter, Carviz):
+                        
+                        if random.random() < huntProbability: # death
+                            self.creatureDeath(strongestErbast)
+                            hunter.changeEnergy(erbastEnergy)
+                            break
+                        else:
+                            attempts += 1
+                            self.changeEnergyAndHandleDeath(hunter, -5)
 
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
@@ -434,21 +459,17 @@ class Environment():
             nextCoords.update(c.moveChoice(worldGrid = grid))
 
         nextCoords_tmp = nextCoords.copy()
-        aliveDict = dict()
 
         for c in nextCoords_tmp:
             if c.getCoords() == nextCoords[c]: # staying
                 stayingCreatures.append(c)
                 nextCoords.pop(c)
             else: # moving
-                aliveDict.update(c.changeEnergy(ENERGY_LOSS)) # energy cost for moving
+                if not self.changeEnergyAndHandleDeath(c, ENERGY_LOSS):
+                    nextCoords.pop(c)
                 
         self.move(nextCoords)
 
-        if aliveDict:
-            for creature in aliveDict:
-                if not aliveDict[creature]:
-                    self.creatureDeath(creature)
 
         # 3.3 - GRAZING
         stayingErbast = [e for e in stayingCreatures if isinstance(e, Erbast) or isinstance(e,Herd)]
@@ -531,7 +552,7 @@ class WorldGrid():
     def __init__(self, type = "fbm", threshold = 0.2):
         self.grid = self.createWorld(type, threshold)
     # so that we can crate different types of initial setups
-    def createWorld(self, typology = "fbm", threshold = 0.2):
+    def createWorld(self, typology = "fbm", threshold = 0.2) -> np.ndarray:
         """
         Initialize the world
         Vegetob density starts at around 25
@@ -617,7 +638,7 @@ class LandCell(Cell):
 
     def addAnimal(self, animal:'Animal'):
         """add an animal from the inhabitants list"""
-        # 
+        
         if isinstance(animal, Erbast):
             if self.numErbast == 0:
                 self.creatures["Erbast"].append(animal)
@@ -632,36 +653,45 @@ class LandCell(Cell):
                 self.numErbast += 1
                 self.herd.addComponent(animal)
 
-        if isinstance(animal, Carviz): #TODO Carviz logic
+        if isinstance(animal, Carviz): # pride logic handled by struggle
             self.creatures["Carviz"].append(animal)
             self.numCarviz += 1
 
-    def removeAnimal(self, animal:'Animal'): #TODO remove carviz
+    def removeAnimal(self, animal:'Animal'): 
         """Remove an animal from the inhabitants list"""
         if isinstance(animal, Erbast):
             if animal in self.creatures["Erbast"]:
-                if self.numErbast <= 1 or (self.herd and len(self.herd.getComponents()) == 0):
+
+                if self.numErbast == 0 and not self.herd:
+                    raise Exception(f"{animal} is not present in the cell {self}, hence it can't be removed. The cell is empty")
+                
+                elif self.numErbast == 1 and not self.herd:
                     self.numErbast -= 1
                     self.creatures["Erbast"].remove(animal)
-                    self.herd = None
+
                 elif self.numErbast == 2 and self.herd:
                     presentHerd = self.herd
-                    # print(f"numE: {self.numErbast}, removing one creature from: {presentHerd}, the creature is {animal}")
                     presentHerd.loseComponent(animal)
-                    remainingAnimal = presentHerd.getComponents()[0]
+                    try:
+                        remainingAnimal = presentHerd.getComponents()[0]
+                    except IndexError:
+                        raise Exception(f"herd {presentHerd} is empty, this should not happen, numErbast: {self.numErbast}, self.herd: {self.herd}, creatures: {self.creatures['Erbast']}")
                     remainingAnimal.inSocialGroup = False
                     remainingAnimal.socialGroup = None
                     self.removeHerd()
                     self.addAnimal(remainingAnimal)
-                elif self.herd: 
+
+                elif self.numErbast > 2 and self.herd: 
                     self.creatures["Erbast"].remove(animal)
                     self.numErbast -= 1
                     self.herd.loseComponent(animal)
-                elif not self.herd: # quick, possibly wrong, fix
-                    self.numErbast -= 1
-                    self.creatures["Erbast"].remove(animal)
+
+                else:
+                    raise Exception(f"This should not happen, tried to remove {animal} from the cell {self}, herd: {self.herd}, numErbast: {self.numErbast}")
+                
             else:
                 raise Exception(f"{animal} is not a creature of the cell: {self}, hence it can't be removed")
+            
         elif isinstance(animal, Carviz):
             if animal in self.creatures["Carviz"]:
                 self.creatures["Carviz"].remove(animal)
@@ -676,7 +706,6 @@ class LandCell(Cell):
                 self.herd.joinGroups(group)
                 self.creatures["Erbast"].extend(group.getComponents())
                 self.numErbast += group.numComponents
-                pass
             else:
                 if self.numErbast == 1:
                     presentAnimal = self.creatures["Erbast"][0]
@@ -686,7 +715,7 @@ class LandCell(Cell):
                 self.creatures["Erbast"].extend(group.getComponents())
                 self.numErbast += group.numComponents
 
-        elif isinstance(group, Pride):
+        elif isinstance(group, Pride): # pride logic handled by struggle
             self.prides.append(group)
             self.creatures["Carviz"].extend(group.getComponents())
             self.numCarviz += group.numComponents
@@ -698,7 +727,7 @@ class LandCell(Cell):
             self.numErbast -= self.herd.numComponents
             self.herd = None
 
-    def removePride(self, pride:'Pride'): # TODO multiple prides could co-exist i think
+    def removePride(self, pride:'Pride'):
         """Remove the pride from the landCell"""
         self.creatures["Carviz"] = [car for car in self.creatures["Carviz"] if car not in pride.getComponents()]
         self.numCarviz -= pride.numComponents
