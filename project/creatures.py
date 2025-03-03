@@ -380,7 +380,7 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
                 if not isinstance(animal, Animal):
                     raise Exception(f"All Individuals should be Animals, received instead {animal}")
                 if animal.getCoords() != self.coords:
-                    raise Exception(f"All Animals should inhabit the same cell, individual {animal} is in {animal.getCoords()}, it should be in {self.coords}")
+                    raise Exception(f"All Animals should inhabit the same cell, individual {animal} is in {animal.getCoords()}, it should be in {self.coords}. Herd is {self}, components are {components}")
 
         self.components = components
         
@@ -519,7 +519,7 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
                         leavingIndividualsAndDirection[lastAnimal] = max(lAValues, key=lAValues.get)
                         return leavingIndividualsAndDirection
         
-        choices = {self:groupdecidedCoords,**leavingIndividualsAndDirection}
+        choices = {**leavingIndividualsAndDirection, self:groupdecidedCoords}
         return choices
 
     def __repr__(self):

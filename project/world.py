@@ -218,7 +218,7 @@ class Environment():
         #for o in objects:
         
     def _changeCoords(self, obj:Species,newCoords:tuple):
-        """helper func to changee the coords of an animal or a socialgroup"""
+        """helper func to change the coords of an animal or a socialgroup"""
         if isinstance(obj, Animal):
             obj.coords = newCoords
             return True
@@ -282,12 +282,12 @@ class Environment():
             if c1Energy > c2Energy: # c1 wins
                 self.creatureDeath(c2)
                 p2Carvizes.pop()
-                c1.changeEnergy(c2Energy)
+                c1.changeEnergy(-c2Energy)
                 p1Carvizes.sort(key = lambda x : x.getEnergy())
             elif c1Energy < c2Energy:
                 self.creatureDeath(c1)
                 p1Carvizes.pop()
-                c1.changeEnergy(c2Energy)
+                c2.changeEnergy(-c1Energy)
                 p2Carvizes.sort(key = lambda x : x.getEnergy())
             else:
                 self.creatureDeath(c1)
@@ -436,14 +436,23 @@ class Environment():
                             break
                         else:
                             attempts += 1
-                            self.changeEnergyAndHandleDeath(hunter, -5)
+                            alive = self.changeEnergyAndHandleDeath(hunter, -5)
+                            print(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. alive?: {alive}")
+                            if not alive:
+                                break
 
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
 
         self.day += 1
 
-        print(f"DAY {self.day}\ntotErbast: {self.totErbast}, totCarviz: {self.totCarviz}, creatures: {self.creatures}, deadCreatures: {self.deadCreatures}, herds: {self.getHerds()}, prides: {self.getPrides()}")
+        print(f"DAY {self.day}\n")
+        print(f"totErbast: {self.totErbast}")
+        print(f"totCarviz: {self.totCarviz}")
+        print(f"creatures: {self.creatures}")
+        print(f"deadCreatures: {self.deadCreatures}")
+        print(f"herds: {self.getHerds()}")
+        print(f"prides: {self.getPrides()}\n")
 
         grid = self.getGrid()
         cells = grid.reshape(-1)
@@ -453,6 +462,8 @@ class Environment():
             cell.growVegetob()
 
         # 3.2 - MOVEMENT
+
+        print("MOVEMENT PHASE\n")
 
         species = self.getAloneErbasts() + self.getHerds() + self.getAloneCarviz() + self.getPrides()
 
@@ -489,6 +500,8 @@ class Environment():
         # the order here matters and would promote or not change the win of the group with the higher social Attitude
         # the order will be random
 
+        print("STRUGGLE PHASE\n")
+
         orderCarvizJoins = random.randint(0,1)
 
         if orderCarvizJoins == 0:
@@ -499,6 +512,8 @@ class Environment():
             self.joinCarvizesToPride()
         
         # 3.4 - HUNT
+
+        print("HUNT PHASE\n")
 
         self.hunt()
 
@@ -736,7 +751,7 @@ class LandCell(Cell):
         print("trying to remove herd at coords: ", self.coords, "numErbast: ", self.numErbast, "numCarviz: ", self.numCarviz, "herd: ", self.herd)
 
         if self.herd is not None:
-            self.creatures["Erbast"] = [erb for erb in self.creatures["Erbast"] if erb not in self.herd.getComponents()]
+            self.creatures["Erbast"] = [erb for erb in self.creatures["Erbast"] if erb not in herd.getComponents()]
             self.numErbast -= self.herd.numComponents
             if self.numErbast < 2:
                 self.herd = None
