@@ -131,16 +131,17 @@ class Interface():
         
         self.currentDay = frameNum
         
-        if self.currentDay > self.maxDay:
+        if self.currentDay >= self.maxDay:
             self.ani.event_source.stop()
             return [img]
         
-
-        img.set_data(self.grid)
         self.env.nextDay()
+        # img.set_data(self.grid)
+        img = self.ax_plot.imshow(self.grid, interpolation='nearest')
+        print(f"{frameNum} and {self.currentDay}")
+        plt.pause(3)
         self.day_text.set_text(f"Day: {self.currentDay}")
         
-        # print(f"{frameNum} and {self.currentDay}")
         # newGrid = self.env.getGrid()
         # rgbGrid = self.gridToRGB(newGrid)
 
@@ -267,11 +268,11 @@ class Interface():
 
         if self.ani is None:
             self.currentDay = 0
-            
-            self.img = self.display_initial_setup()
-            plt.pause(1)
+            if self.currentDay == 0:
+                self.img = self.display_initial_setup()
+                plt.pause(1)
             # self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
-            self.ani = FuncAnimation(self.fig_map, self.update, frames=list(range(1, self.maxDay +1)), fargs=(self.img,),
+            self.ani = FuncAnimation(self.fig_map, self.update, frames=list(range(1, self.maxDay + 1)), fargs=(self.img,),
                                 interval=2000,
                                 blit=False,
                                 repeat=False,
