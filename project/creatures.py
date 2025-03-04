@@ -2,6 +2,9 @@ from planisuss_constants import *
 import numpy as np
 import sys
 import math
+from typing import TYPE_CHECKING # to avoid vscode telling me i'm not including libraries that would cause a circular import
+if TYPE_CHECKING:
+    from world import WorldGrid
 
 def getDirection(myCoords:tuple ,otherCoords:tuple):
     """given to coords tuple return direction"""
@@ -117,7 +120,7 @@ class Animal(Species):
         return self.energy
 
     def changeEnergy(self, amount:int):
-        """Change the energy of the animal by the specified amount"""
+        """Change the energy of the animal by the specified amount, returns if the animal is alive"""
         if not isinstance(amount, int):
             raise ValueError("amount must be an integer")
         if 0 <= self.energy + amount <= MAX_ENERGY:
@@ -127,9 +130,10 @@ class Animal(Species):
             self.alive = False
         else:
             self.energy = MAX_ENERGY
+        return {self:self.alive}
 
     def ageStep(self, days:int = 1):
-        """Increase the age of the animal by the specified number of days"""
+        """Increase the age of the animal by the specified number of days. returns if the animal is alive (True) or dead (False)"""
         if self.alive:
             if not isinstance(days, int):
                 raise ValueError("days must be an integer")
@@ -142,7 +146,16 @@ class Animal(Species):
                 self.energy -= AGING
         else:
             raise RuntimeError(f"Cannot age a dead animal: {self}")
+        
+        return self.alive
 
+    def die(self):
+        if self.inSocialGroup:
+            socG = self.socialGroup
+            socG.loseComponent(self)
+        self.alive = False
+        self.energy = 0
+        return self
 
     def moveChoice(self, worldGrid: 'WorldGrid') -> dict['Species', tuple[int, int]]:
         """handles group"""
@@ -391,11 +404,14 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         return round(totalEnergy / self.numComponents , 2)
 
     def changeEnergy(self, amount:int):
-        """Change the energy of each individual in the group by the specified amount"""
+        """Change the energy of each individual in the group by the specified amount, returns dictionary of alive creatures"""
         if not isinstance(amount, int):
             raise ValueError("amount must be an integer")
+        aliveDict = dict()
         for component in self.components:
             component.changeEnergy(amount)
+            aliveDict[component] = component.alive
+        return aliveDict
 
     def getComponents(self):
         return self.components
@@ -412,7 +428,13 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
     def joinGroups(self, other:'SocialGroup'):
         self.components.extend(other.components)
         self.numComponents = len(self.components)
-        # join knowledge        
+        componentesToRemove = other.components.copy()
+        for el in componentesToRemove:
+            other.loseComponent(el)
+            el.socialGroup = self
+            el.inSocialGroup = True
+        other.numComponents = 0
+        # TODO -join knowledge        
     
     def loseComponent(self, animal:Animal): #TODO if we are alone? Destroy herd? is this happening somewhere else?
         if not isinstance(animal, Animal):
@@ -431,6 +453,11 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
                 "result": "Group Disbanded",
                 "individuals":[animal,lastAnimal]
                 }
+        elif len(self.components) == 0:
+            return {
+                "result": "Group Already Disbanded",
+                "individuals":[]
+                }
         
         self.components.remove(animal)
         animal.inSocialGroup = False
@@ -440,7 +467,15 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
             "result": "All Good",
             "lost individual": animal
         }
-    
+
+    def disband(self):
+        """Remove all components from group and set numComponents from 0, returns the empty group"""
+        for el in self.components:
+            el.socialGroup = None
+            el.inSocialGroup = False
+        self.numComponents = 0
+        return self
+
     def moveChoice(self, worldGrid: 'WorldGrid', applyConsequences:bool = True) -> dict['Species', tuple[int, int]]:
         """
         In this method the group decision is assessed and eventual leaving components are identified with their preferred direction,
@@ -564,12 +599,6 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
         returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
         return returnDict
-
-    def joinGroups(self, other: SocialGroup):
-        super().joinGroups(other)
-        for el in other.getComponents():
-            el.socialGroup = self
-            el.inSocialGroup = True
 
     def _getVegetobDistribution(self, energies:list[int], availableVegetob: int) -> list[int]:
         """
@@ -699,12 +728,18 @@ class Pride(SocialGroup):
         returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
         return returnDict
 
-    def joinGroups(self, other: SocialGroup):
-        super().joinGroups(other)
-        for el in other.getComponents():
-            el.socialGroup = self
-            el.inSocialGroup = True
-
     def __repr__(self):
         return f"Pride {self.id}, components: {self.components}"
-        
+    
+class DeadCreature():
+
+    def __init__(self, animal:Animal, day:int):
+        self.coords = animal.getCoords()
+        self.deadAnimal = animal
+        self.deathDay = day
+    
+    def getDeathDay(self):
+        return self.deathDay
+    
+    def __repr__(self):
+        return f"Dead {self.deadAnimal} (from day {self.deathDay})"
