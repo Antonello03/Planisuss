@@ -741,5 +741,8 @@ class DeadCreature():
     def getDeathDay(self):
         return self.deathDay
     
+    def getCords(self) -> tuple[int]:
+        return self.coords
+    
     def __repr__(self):
         return f"Dead {self.deadAnimal} (from day {self.deathDay})"

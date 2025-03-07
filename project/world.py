@@ -121,6 +121,8 @@ class Environment():
 
     def addDeadCreature(self, deadCreature:DeadCreature):
         self.deadCreatures.append(deadCreature)
+        x,y = deadCreature.getCoords()
+        self.getGrid()[x][y].addDeadCreature(deadCreature)
         return self.deadCreatures
 
     def addGroup(self, group:SocialGroup):
@@ -602,10 +604,12 @@ class LandCell(Cell):
             "Erbast" : [],
             "Carviz" : []
         }
+        self.deadCreatures = []
         self.herd = None
         self.prides = []
         self.numErbast = 0
         self.numCarviz = 0
+        self.numDeadCreatures = 0
 
     def getVegetobDensity(self):
         """Get Vegetob Density in the cell"""
@@ -623,7 +627,6 @@ class LandCell(Cell):
 
     def addAnimal(self, animal:'Animal'):
         """add an animal from the inhabitants list"""
-        # 
         if isinstance(animal, Erbast):
             if self.numErbast == 0:
                 self.creatures["Erbast"].append(animal)
@@ -641,6 +644,13 @@ class LandCell(Cell):
         if isinstance(animal, Carviz): #TODO Carviz logic
             self.creatures["Carviz"].append(animal)
             self.numCarviz += 1
+
+    def addDeadCreature(self, deadCreature:DeadCreature):
+        """Add a dead creature to the cell"""
+        if not isinstance(deadCreature, DeadCreature):
+            raise TypeError(f"{deadCreature} is not a DeadCreature")
+        self.deadCreatures.append(deadCreature)
+        self.numDeadCreatures += 1
 
     def removeAnimal(self, animal:'Animal'): #TODO remove carviz
         """Remove an animal from the inhabitants list"""
@@ -717,6 +727,10 @@ class LandCell(Cell):
     def getCarvizList(self):
         """Get a list of all Carviz inhabitants in the cell"""
         return self.creatures["Carviz"]
+    
+    def getDeadCreaturesList(self):
+        """Get a list of all DeadCreatures in the cell"""
+        return self.deadCreatures
 
     def getCellType(self):
         return "land"
