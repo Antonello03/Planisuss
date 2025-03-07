@@ -6,7 +6,11 @@ from creatures import Erbast, Carviz, Herd, Pride
 environment = Environment()
 animation = Interface(env = environment)
 
-def initializePopulation(type:str = "test1", nErb = 10, nCarv = 10):
+def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10):
+    grid_shape = environment.getGrid().shape
+    land_cells = [(x, y) for x in range(grid_shape[0]) for y in range(grid_shape[1])
+                  if environment.isLand(x, y)]
+    print(land_cells)
 
     if type == "test1":
         erb1 = Erbast((25,25), energy=100, name="schiavo 1")
@@ -33,16 +37,18 @@ def initializePopulation(type:str = "test1", nErb = 10, nCarv = 10):
 
     if type == "random":
         for i in range(nErb):
-            coords = (random.randint(20,30), random.randint(20,30))
-            erb = Erbast(coords, SocialAttitude = random.random())
+            (x, y) = random.choice(land_cells)
+            # coords = (random.randint(20,30), random.randint(20,30))
+            erb = Erbast((x, y), SocialAttitude = random.random())
             environment.add(erb)
 
         for i in range(nCarv):
-            coords = (random.randint(20,30), random.randint(20,30))
-            carv = Carviz(coords, SocialAttitude = random.random())
+            (x, y) = random.choice(land_cells)
+            # coords = (random.randint(20,30), random.randint(20,30))
+            carv = Carviz((x, y), SocialAttitude = random.random())
             environment.add(carv)
 
-random.seed(1)
-initializePopulation("random", 20, 20)
+# random.seed(1)
+initializePopulation(environment, "random", 20, 20)
 
 animation.run_simulation()

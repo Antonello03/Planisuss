@@ -79,6 +79,9 @@ class Environment():
             raise Exception(f"Given object ({object}) must be either an Animal or a SocialGroup")
         return True
 
+    def isLand(self, x, y):
+        return isinstance(self.getGrid()[x][y], LandCell)
+
     def addAnimal(self, animal:Animal):
         """
         My approach where each landCell know its inhabitants,
@@ -89,6 +92,9 @@ class Environment():
             raise TypeError(f"{animal} is not an Animal")
         
         x,y = animal.getCoords()
+
+        if not self.isLand(x,y):
+            raise Exception(f"Cannot add animal: {animal}, at coords {animal.getCoords()} is not in a LandCell")
 
         if isinstance(animal, Erbast):
             self.creatures["Erbast"].append(animal) 

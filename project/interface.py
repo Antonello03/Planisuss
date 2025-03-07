@@ -139,7 +139,7 @@ class Interface():
         # img.set_data(self.grid)
         img = self.ax_plot.imshow(self.grid, interpolation='nearest')
         print(f"{frameNum} and {self.currentDay}")
-        plt.pause(3)
+        # plt.pause(3)
         self.day_text.set_text(f"Day: {self.currentDay}")
         
         # newGrid = self.env.getGrid()
@@ -177,8 +177,7 @@ class Interface():
             
         for carviz in carviz_list:
             self.draw_animal(carviz)
-    
-    
+            
     def draw_animal(self, animal):
         shift_x = np.random.uniform(-0.3, 0.3)
         shift_y = np.random.uniform(-0.3, 0.3)
@@ -186,8 +185,10 @@ class Interface():
         # print('coordinates', (x, y))
         if isinstance(animal, Erbast):
             color = [216 / 255, 158 / 255, 146 / 255]
-        else:
+        elif isinstance(animal, Carviz):
             color = [139 / 255, 0 / 255, 0 / 255]
+        else:
+            color = [192 / 255, 192 / 255, 192 / 255]
         point = Circle((y + shift_y, x + shift_x), radius=0.1, color=color, alpha=1)
         self.ax_plot.add_artist(point)
         self.animal_artists.append(point)
