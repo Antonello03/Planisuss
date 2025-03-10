@@ -1,4 +1,6 @@
 import random
+import logging
+from datetime import datetime
 from interface import Interface
 from world import Environment
 from creatures import Erbast, Carviz, Herd, Pride
@@ -6,11 +8,19 @@ from creatures import Erbast, Carviz, Herd, Pride
 environment = Environment()
 animation = Interface(env = environment)
 
+# Configure logging
+log_filename = f"run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+logging.basicConfig(
+    filename="planisuss_events.log",  # Always logs to the same file
+    filemode="w",        # "w" overwrites the file on each run
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
 def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10):
     grid_shape = environment.getGrid().shape
     land_cells = [(x, y) for x in range(grid_shape[0]) for y in range(grid_shape[1])
                   if environment.isLand(x, y)]
-    print(land_cells)
 
     if type == "test1":
         erb1 = Erbast((25,25), energy=100, name="schiavo 1")
@@ -34,6 +44,13 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
         carv5 = Carviz((26,26))
         pride2 = Pride([carv3,carv4,carv5])
         environment.add(pride2)
+
+    if type == "test2":
+        erb1 = Erbast((25,25), energy=60, name="schiavo 1")
+        carv1 = Carviz((24, 24))
+        environment.add(erb1)
+        environment.add(carv1)
+        environment.add(Carviz((26,26)))
 
     if type == "random":
         for i in range(nErb):

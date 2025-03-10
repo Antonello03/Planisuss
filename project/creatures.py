@@ -2,6 +2,7 @@ from planisuss_constants import *
 import numpy as np
 import sys
 import math
+import logging
 from typing import TYPE_CHECKING # to avoid vscode telling me i'm not including libraries that would cause a circular import
 if TYPE_CHECKING:
     from world import WorldGrid
@@ -128,6 +129,7 @@ class Animal(Species):
         elif self.energy + amount < 0:
             self.energy = 0
             self.alive = False
+            logging.info(f"{self} died of starvation")
         else:
             self.energy = MAX_ENERGY
         return {self:self.alive}
@@ -142,15 +144,20 @@ class Animal(Species):
             else: 
                 self.age = self.lifetime
                 self.alive = False
+                logging.info(f"{self} died of old age")
             if self.age % 10 == 0:
                 self.energy -= AGING
+                if self.energy <= 0:
+                    self.energy = 0
+                    self.alive = False
+                    logging.info(f"{self} died of starvation due to aging")
         else:
-            raise RuntimeError(f"Cannot age a dead animal: {self}")
+            raise RuntimeError(f"Cannot age a dead animal: {self}, age: {self.age}, lifetime: {self.lifetime}")
         
         return self.alive
 
     def die(self):
-        if self.inSocialGroup:
+        if isinstance(self, Carviz) and self.inSocialGroup:
             socG = self.socialGroup
             socG.loseComponent(self)
         self.alive = False
@@ -266,11 +273,12 @@ class Erbast(Animal):
         
         # Running away from carviz
         escapeCellCoords = getCellInDirection(presentCell.getCoords(), self.preferredDirection)
-        escapeCell = worldGrid[escapeCellCoords]
-        if escapeCell in neighborhood and escapeCell != presentCell and self.preferredDirectionIntensity > Erbast.ESCAPE_THRESHOLD:
-            # print(f"Oh no I'm {self}, I'm in {self.getCoords()} and there's a Carviz nearby, better go in {escapeCell.getCoords()}")
-            desirabilityScores[escapeCell] += self.preferredDirectionIntensity
-            self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
+        if checkCoordsInBoundary(escapeCellCoords):
+            escapeCell = worldGrid[escapeCellCoords]
+            if escapeCell in neighborhood and escapeCell != presentCell and self.preferredDirectionIntensity > Erbast.ESCAPE_THRESHOLD:
+                # print(f"Oh no I'm {self}, I'm in {self.getCoords()} and there's a Carviz nearby, better go in {escapeCell.getCoords()}")
+                desirabilityScores[escapeCell] += self.preferredDirectionIntensity
+                self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
 
         for cell in desirabilityScores:
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
@@ -374,7 +382,7 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
                 if not isinstance(animal, Animal):
                     raise Exception(f"All Individuals should be Animals, received instead {animal}")
                 if animal.getCoords() != self.coords:
-                    raise Exception(f"All Animals should inhabit the same cell, individual {animal} is in {animal.getCoords()}, it should be in {self.coords}")
+                    raise Exception(f"All Animals should inhabit the same cell, individual {animal} is in {animal.getCoords()}, it should be in {self.coords}. Herd is {self}, components are {components}")
 
         self.components = components
         
@@ -436,7 +444,7 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         other.numComponents = 0
         # TODO -join knowledge        
     
-    def loseComponent(self, animal:Animal): #TODO if we are alone? Destroy herd? is this happening somewhere else?
+    def loseComponent(self, animal:Animal):
         if not isinstance(animal, Animal):
             raise ValueError("animal must be an instance of Animal")
         
@@ -453,20 +461,29 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
                 "result": "Group Disbanded",
                 "individuals":[animal,lastAnimal]
                 }
+        elif len(self.components) == 1:
+            self.components.remove(animal)
+            animal.inSocialGroup = False
+            animal.socialGroup = None
+            self.numComponents -= 1
+            return {
+                "result": "Group Disbanded",
+                "lost individual": animal
+            }
         elif len(self.components) == 0:
             return {
                 "result": "Group Already Disbanded",
                 "individuals":[]
                 }
-        
-        self.components.remove(animal)
-        animal.inSocialGroup = False
-        animal.socialGroup = None
-        self.numComponents -= 1
-        return {
-            "result": "All Good",
-            "lost individual": animal
-        }
+        else:
+            self.components.remove(animal)
+            animal.inSocialGroup = False
+            animal.socialGroup = None
+            self.numComponents -= 1
+            return {
+                "result": "All Good",
+                "lost individual": animal
+            }
 
     def disband(self):
         """Remove all components from group and set numComponents from 0, returns the empty group"""
@@ -476,29 +493,36 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         self.numComponents = 0
         return self
 
-    def moveChoice(self, worldGrid: 'WorldGrid', applyConsequences:bool = True) -> dict['Species', tuple[int, int]]:
+    def moveChoice(self, worldGrid: 'WorldGrid') -> dict['Species', tuple[int, int]]:
         """
         In this method the group decision is assessed and eventual leaving components are identified with their preferred direction,
         if applyConsequences is True, leaving individuals will be removed from the herd
         """
+
+
         moveValues = self.rankMoves(worldGrid)
         groupdecidedCoords = max(moveValues, key=moveValues.get)
-        # print(f"{self} choosed:\n {self.rankMoves(worldGrid)}")
+
+        logging.info(f"Group {self}, components: {self.getComponents()} want to go in {groupdecidedCoords}") # TODO remove
+
         leavingIndividualsAndDirection = dict()
         for c in self.getComponents():
             individualValues = c.rankMoves(worldGrid)
-            # print(self, "in: ",self.getCoords(),"group want to go: ",groupdecidedCoords, "erbast",c, "in ",c.getCoords(), "preference is:",individualValues)
             if individualValues[groupdecidedCoords] < -c.socialAttitude: #if individual preference is lower than the negative social attitude for the group choice
-                leavingIndividualsAndDirection[c] = max(individualValues, key=individualValues.get) # get individual preferred movement
-                if applyConsequences:
-                    result = self.loseComponent(c)
-                    if result["result"] == 'Group Disbanded':
-                        lastAnimal = result["individuals"][1]
+                individualDecidedCoords = max(individualValues, key=individualValues.get)
+                if groupdecidedCoords != individualDecidedCoords: #and the individual choice is different from the group choice
+                    leavingIndividualsAndDirection[c] = individualDecidedCoords # get individual preferred movement
+                    logging.info(f"in: {self.getCoords()}, group wants to go: {groupdecidedCoords}, "
+                                f"erbast: {c} in {c.getCoords()}, wants to go: {max(individualValues, key=individualValues.get)}")
+                    if self.numComponents == 2:
+                        logging.info(f"The group {self} disbanded, the individuals {self.getComponents()} are now free to go")
+                        components = self.getComponents()
+                        lastAnimal = [x for x in components if x != c][0]
                         lAValues = lastAnimal.rankMoves(worldGrid)
                         leavingIndividualsAndDirection[lastAnimal] = max(lAValues, key=lAValues.get)
                         return leavingIndividualsAndDirection
         
-        choices = {self:groupdecidedCoords,**leavingIndividualsAndDirection}
+        choices = {**leavingIndividualsAndDirection, self:groupdecidedCoords}
         return choices
 
     def __repr__(self):
@@ -648,7 +672,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             if veg > 0:
                 erb.graze(veg)
             else: #if not eating reduce socialAttitude
-                erb.socialAttitude -= Erbast.NOT_EATING_SA_REDUCTION
+                erb.socialAttitude = max(0, erb.socialAttitude - Erbast.NOT_EATING_SA_REDUCTION)
         return sum(assignedVegetobs)
 
     def __repr__(self):
