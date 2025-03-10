@@ -765,22 +765,22 @@ class LandCell(Cell):
 
         if isinstance(group, Herd):
             if self.herd is not None:
-                self.herd.joinGroups(group)
-                self.creatures["Erbast"].extend(group.getComponents())
                 self.numErbast += group.numComponents
+                self.creatures["Erbast"].extend(group.getComponents())
+                self.herd.joinGroups(group)
             else:
                 if self.numErbast == 1:
                     presentAnimal = self.creatures["Erbast"][0]
                     self.removeAnimal(presentAnimal)
                     group.addComponent(presentAnimal)
-                self.herd = group
-                self.creatures["Erbast"].extend(group.getComponents())
                 self.numErbast += group.numComponents
+                self.creatures["Erbast"].extend(group.getComponents())
+                self.herd = group
 
         elif isinstance(group, Pride): # pride logic handled by struggle
+            self.numCarviz += group.numComponents
             self.prides.append(group)
             self.creatures["Carviz"].extend(group.getComponents())
-            self.numCarviz += group.numComponents
 
     def removeHerd(self, herd:'Herd'):
         """Remove the herd from the landCell"""

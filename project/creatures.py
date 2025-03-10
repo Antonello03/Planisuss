@@ -80,7 +80,11 @@ class Species():
         """
         x, y = self.coords[0], self.coords[1]
         d = d if d is not None else self.neighborhoodDistance
-        cands = worldGrid[x - d : x + d + 1, y - d : y + d + 1].reshape(-1)
+        x_min = max(0, x - d)
+        x_max = min(NUMCELLS_R, x + d + 1)
+        y_min = max(0, y - d)
+        y_max = min(NUMCELLS_C, y + d + 1)
+        cands = worldGrid[x_min:x_max, y_min:y_max].reshape(-1)
         # print(f"{self} was looking for its neighborhood, i returned {cands}, with neighborhood {d}")
         # cands = np.delete(cands,len(cands)//2)
         return cands
@@ -352,7 +356,7 @@ class Carviz(Animal):
                     desirabilityScores[presentCell] += cell.numCarviz * (self.socialAttitude - 0.5)
 
         # Staying likability evaluation - carviz are very unlikely to stay still, they're constantly looking for Erbasts
-        desirabilityScores[presentCell] -= ((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT) #when the energy is low a prey must be found
+        desirabilityScores[presentCell] -= round(((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT),2) #when the energy is low a prey must be found
 
         for cell in desirabilityScores:
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
@@ -765,7 +769,7 @@ class DeadCreature():
     def getDeathDay(self):
         return self.deathDay
     
-    def getCords(self) -> tuple[int]:
+    def getCoords(self) -> tuple[int]:
         return self.coords
     
     def __repr__(self):
