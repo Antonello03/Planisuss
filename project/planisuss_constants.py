@@ -14,7 +14,7 @@ Stefano Ferrari
 
 ### Game constants
 
-NUMDAYS = 50     # Length of the simulation in days
+NUMDAYS = 100     # Length of the simulation in days
 
 # geometry
 NUMCELLS = 50     # size of the (square) grid (NUMCELLS x NUMCELLS)

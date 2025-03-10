@@ -5,6 +5,9 @@ from planisuss_constants import *
 from typing import Union
 import numpy as np
 import noise
+import json
+import logging
+import pprint
 
 # TODO Carviz join dynamic and others...
 # TODO groups should be smart enough to avoid going back to the same cell...
@@ -409,7 +412,7 @@ class Environment():
 
                         if random.random() < huntProbability: # death
                             self.creatureDeath(strongestErbast)
-                            print(f"{strongestErbast} has been killed by {hunter}")
+                            logging.info(f"{strongestErbast} has been killed by {hunter}")
 
                             # energy sharing
                             individualShare = erbastEnergy // numPrideComponents
@@ -422,8 +425,8 @@ class Environment():
                             break
                         else:
                             attempts += 1
-                            anyAlive = self.changeEnergyAndHandleDeath(hunter, -5)
-                            print(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. any Alive?: {anyAlive}")
+                            anyAlive = self.changeEnergyAndHandleDeath(hunter, -2)
+                            logging.info(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. any Alive?: {anyAlive}")
                             if not anyAlive:
                                 break
                     
@@ -431,13 +434,13 @@ class Environment():
                         
                         if random.random() < huntProbability: # death
                             self.creatureDeath(strongestErbast)
-                            print(f"{strongestErbast} has been killed by {hunter}")
+                            logging.info(f"{strongestErbast} has been killed by {hunter}")
                             hunter.changeEnergy(erbastEnergy)
                             break
                         else:
                             attempts += 1
-                            alive = self.changeEnergyAndHandleDeath(hunter, -5)
-                            print(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. alive?: {alive}")
+                            alive = self.changeEnergyAndHandleDeath(hunter, -2)
+                            logging.info(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. alive?: {alive}")
                             if not alive:
                                 break
 
@@ -446,13 +449,13 @@ class Environment():
 
         self.day += 1
 
-        print(f"DAY {self.day}\n")
-        print(f"totErbast: {self.totErbast}")
-        print(f"totCarviz: {self.totCarviz}")
-        print(f"creatures: {self.creatures}")
-        print(f"deadCreatures: {self.deadCreatures}")
-        print(f"herds: {self.getHerds()}")
-        print(f"prides: {self.getPrides()}\n")
+        logging.info(f"DAY {self.day}\n")
+        logging.info(f"totErbast: {self.totErbast}")
+        logging.info(f"totCarviz: {self.totCarviz}")
+        logging.info(f"creatures: {self.creatures}")
+        logging.info(f"deadCreatures: {self.deadCreatures}")
+        logging.info(f"herds: {self.getHerds()}")
+        logging.info(f"prides: {self.getPrides()}\n")
 
         grid = self.getGrid()
         cells = grid.reshape(-1)
@@ -463,7 +466,7 @@ class Environment():
 
         # 3.2 - MOVEMENT
 
-        print("MOVEMENT PHASE\n")
+        logging.info("MOVEMENT PHASE\n")
 
         species = self.getAloneErbasts() + self.getHerds() + self.getAloneCarviz() + self.getPrides()
 
@@ -482,8 +485,8 @@ class Environment():
             else: # moving
                 if not self.changeEnergyAndHandleDeath(c, ENERGY_LOSS):
                     nextCoords.pop(c)
-                    print(nextCoords)
                 
+        logging.info(f"NextCoords:\n{pprint.pformat(nextCoords)}")
         self.move(nextCoords)
 
 
@@ -500,7 +503,7 @@ class Environment():
         # the order here matters and would promote or not change the win of the group with the higher social Attitude
         # the order will be random
 
-        print("STRUGGLE PHASE\n")
+        logging.info("STRUGGLE PHASE\n")
 
         orderCarvizJoins = random.randint(0,1)
 
@@ -513,7 +516,7 @@ class Environment():
         
         # 3.4 - HUNT
 
-        print("HUNT PHASE\n")
+        logging.info("HUNT PHASE\n")
 
         self.hunt()
 
@@ -522,6 +525,19 @@ class Environment():
             alive = c.ageStep()
             if not alive:
                 self.creatureDeath(c)
+
+        # Log cells with Erbasts
+        logging.info("LANDCELLS WITH ERBASTS\n")
+        for cell in landCells:
+            erbast_list = cell.getErbastList()
+            if erbast_list:
+                logging.info(f"LandCell {cell.getCoords()} has Erbasts: {erbast_list}")
+
+        logging.info("LANDCELLS WITH CARVIZES\n")
+        for cell in landCells:
+            carviz_list = cell.getCarvizList()
+            if carviz_list:
+                logging.info(f"LandCell {cell.getCoords()} has Carvizes: {carviz_list}")
 
         return self.getGrid()
     
@@ -562,7 +578,7 @@ class WorldGrid():
                     distance = np.sqrt((i - center) ** 2 + (j - center) ** 2)
                     distance_weight = distance / max_dist
                     dynamic_treshold = threshold + (1 - threshold) * distance_weight
-                    # print(dynamic_treshold)
+                    # logging.info(dynamic_treshold)
                     grid[i][j] = 1 if grid[i][j] > dynamic_treshold else 0
         else:
             grid = np.where(grid > threshold, 1, 0)
@@ -659,7 +675,8 @@ class LandCell(Cell):
     def addAnimal(self, animal:'Animal'):
         """add an animal from the inhabitants list"""
 
-        print("trying to add at coords: ", self.coords, "the animal: ", animal, "numErbast: ", self.numErbast, "numCarviz: ", self.numCarviz, "herd: ", self.herd)
+        logging.info(f"Trying to add at coords: {self.coords}, the animal: {animal}, "
+             f"numErbast: {self.numErbast}, numCarviz: {self.numCarviz}, herd: {self.herd}")
         
         if isinstance(animal, Erbast):
             if self.numErbast == 0:
@@ -682,7 +699,9 @@ class LandCell(Cell):
     def removeAnimal(self, animal:'Animal'): 
         """Remove an animal from the inhabitants list"""
 
-        print("trying to remove at coords: ", self.coords, "the animal: ", animal, "numErbast: ", self.numErbast, "numCarviz: ", self.numCarviz, "herd: ", self.herd)
+        logging.info(f"Trying to remove at coords: {self.coords}, the animal: {animal}, "
+             f"numErbast: {self.numErbast}, numCarviz: {self.numCarviz}, herd: {self.herd}")
+
 
         if isinstance(animal, Erbast):
             if animal in self.creatures["Erbast"]:
@@ -698,9 +717,10 @@ class LandCell(Cell):
                     presentHerd = self.herd
                     result = presentHerd.loseComponent(animal)
                     individuals = result["individuals"]
+                    self.creatures["Erbast"].clear()
                     self.numErbast = 0 # as addAnimal will increment it
                     self.herd = None
-                    print(f"trying to remove {animal} from the cell {self}, herd: {self.herd}, numErbast: {self.numErbast}. The result of loseComponent is: {result}")
+                    logging.info(f"trying to remove {animal} from the cell {self}, herd: {self.herd}, numErbast: {self.numErbast}. The result of loseComponent is: {result}")
                     self.addAnimal(individuals[1])
 
                 elif self.numErbast > 2 and self.herd: 
@@ -724,7 +744,7 @@ class LandCell(Cell):
         add a Herd or a Pride to the landCell and eventually resolve conflicts / join groups
         """
 
-        print(f"trying to add group {group} at coords: {self.coords}, numErbast: {self.numErbast}, numCarviz: {self.numCarviz}, herd: {self.herd}")
+        logging.info(f"trying to add group {group} at coords: {self.coords}, numErbast: {self.numErbast}, numCarviz: {self.numCarviz}, herd: {self.herd}")
 
         if isinstance(group, Herd):
             if self.herd is not None:
@@ -748,7 +768,9 @@ class LandCell(Cell):
     def removeHerd(self, herd:'Herd'):
         """Remove the herd from the landCell"""
 
-        print("trying to remove herd at coords: ", self.coords, "numErbast: ", self.numErbast, "numCarviz: ", self.numCarviz, "herd: ", self.herd)
+        logging.info(f"Trying to remove herd at coords: {self.coords}, numErbast: {self.numErbast}, "
+             f"numCarviz: {self.numCarviz}, herd: {self.herd}")
+
 
         if self.herd is not None:
             self.creatures["Erbast"] = [erb for erb in self.creatures["Erbast"] if erb not in herd.getComponents()]
@@ -762,7 +784,9 @@ class LandCell(Cell):
     def removePride(self, pride:'Pride'):
         """Remove the pride from the landCell"""
 
-        print("trying to remove pride at coords: ", self.coords, "numErbast: ", self.numErbast, "numCarviz: ", self.numCarviz, "herd: ", self.herd)
+        logging.info(f"Trying to remove pride at coords: {self.coords}, numErbast: {self.numErbast}, "
+             f"numCarviz: {self.numCarviz}, herd: {self.herd}")
+
 
         self.creatures["Carviz"] = [car for car in self.creatures["Carviz"] if car not in pride.getComponents()]
         self.numCarviz -= pride.numComponents

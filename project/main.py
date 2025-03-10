@@ -1,10 +1,21 @@
 import random
+import logging
+from datetime import datetime
 from interface import Interface
 from world import Environment
 from creatures import Erbast, Carviz, Herd, Pride
 
 environment = Environment()
 animation = Interface(env = environment)
+
+# Configure logging
+log_filename = f"run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+logging.basicConfig(
+    filename="planisuss_events.log",  # Always logs to the same file
+    filemode="w",        # "w" overwrites the file on each run
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 def initializePopulation(type:str = "test1", nErb:int = 10, nCarv:int = 10):
 
@@ -53,11 +64,3 @@ random.seed(1)
 initializePopulation("random", 20, 20)
 
 animation.run_simulation()
-
-
-# TWO BIG PROBLEMS
-# CARVIZES DIYNG MULTIPLE TIMES - MAYBE SOLVED
-# MODIFIED MOVECHOICE BUT KNOW PRIDES ARE NOT CORRECTLY HANDLED
-# ADDING ANIMALES WITHOUT COORDS UPDATE
-
-# MAIN PROBLEM IS THAT LANDCELL KEEPS HOLDING DEAD ERBASTS (AND CARVIZES ?)
