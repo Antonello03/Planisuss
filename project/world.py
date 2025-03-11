@@ -389,6 +389,16 @@ class Environment():
         cellHerds = self.getCellSpeciesDict(self.getHerds())
         cellErbasts = self.getCellSpeciesDict(self.getAloneErbasts())
 
+        # Log energies of carvizes, including those in prides
+        logging.info("CARVIZES ENERGIES\n")
+        for coords, hunters in cellHunters.items():
+            for hunter in hunters:
+                if isinstance(hunter, Carviz):
+                    logging.info(f"{hunter} at {coords} has energy: {hunter.getEnergy()}")
+                elif isinstance(hunter, Pride):
+                    for carviz in hunter.getComponents():
+                        logging.info(f"{carviz} in Pride at {coords} has energy: {carviz.getEnergy()}")
+
         for coords in cellHunters:
             if coords in cellHerds or coords in cellErbasts:
 
@@ -451,6 +461,16 @@ class Environment():
                             logging.info(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. alive?: {alive}")
                             if not alive:
                                 break
+
+        # Log energies of carvizes, including those in prides again after hunting
+        logging.info("CARVIZES ENERGIES AFTER HUNTING\n")
+        for coords, hunters in cellHunters.items():
+            for hunter in hunters:
+                if isinstance(hunter, Carviz):
+                    logging.info(f"{hunter} at {coords} has energy: {hunter.getEnergy()}")
+                elif isinstance(hunter, Pride):
+                    for carviz in hunter.getComponents():
+                        logging.info(f"{carviz} in Pride at {coords} has energy: {carviz.getEnergy()}")
 
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
