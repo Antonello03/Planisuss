@@ -66,6 +66,6 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
             environment.add(carv)
 
 # random.seed(1)
-initializePopulation(environment, "random", 40, 20)
+initializePopulation(environment, "random", 1000, 500)
 
 animation.run_simulation()

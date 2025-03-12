@@ -85,6 +85,9 @@ class Species():
         y_min = max(0, y - d)
         y_max = min(NUMCELLS_C, y + d + 1)
         cands = worldGrid[x_min:x_max, y_min:y_max].reshape(-1)
+
+        logging.info(f"{self}, in position {self.getCoords()}, with neighborhood distance {d} was looking for its neighborhood, i returned {cands}")
+
         # print(f"{self} was looking for its neighborhood, i returned {cands}, with neighborhood {d}")
         # cands = np.delete(cands,len(cands)//2)
         return cands
@@ -550,6 +553,9 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         Herd.ID += 1
         self.preferredDirection = None
         self.preferredDirectionIntensity = 1 # number from 0 to 1
+
+        logging.info(f"HERD CREATION -> Herd {self.id} with components: {self.components}, current coords: {self.coords}, last coords: {self.lastCoords}, neighborhood distance: {self.neighborhoodDistance}, memory: {self.memory}")
+
 
     def rankMoves(self, worldGrid:'WorldGrid'):
         """
