@@ -117,15 +117,16 @@ class Environment():
                 if not aliveDict[creature]:
                     self.creatureDeath(creature)
 
-            return any(aliveDict.values())    
+            return aliveDict   
 
         elif isinstance(species, Animal):
             alive = species.changeEnergy(energy)[species]
             if not alive:
                 self.creatureDeath(species)
-                return False
+            return {species:alive}
 
-        return True
+        else:
+            raise TypeError(f"{species} is not an Animal or a SocialGroup")
 
     def creatureDeath(self, animal:Animal):
         """Handles the death of a creature"""
@@ -183,6 +184,7 @@ class Environment():
                 self.totCarviz -= 1
                 return True
             
+        logging.error(f"animal: {animal}, at coords {animal.getCoords()}, is not present in any cell or is not a Erbast/Carviz")
         raise Exception(f"animal: {animal}, at coords {animal.getCoords()}, is not present in any cell or is not a Erbast/Carviz")
                                                                 
     def removeGroup(self, group:SocialGroup):
@@ -443,7 +445,7 @@ class Environment():
                             break
                         else:
                             attempts += 1
-                            anyAlive = self.changeEnergyAndHandleDeath(hunter, -2)
+                            anyAlive = any(self.changeEnergyAndHandleDeath(hunter, -2).values())
                             logging.info(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. any Alive?: {anyAlive}")
                             if not anyAlive:
                                 break
@@ -457,7 +459,7 @@ class Environment():
                             break
                         else:
                             attempts += 1
-                            alive = self.changeEnergyAndHandleDeath(hunter, -2)
+                            alive = self.changeEnergyAndHandleDeath(hunter, -2)[hunter]
                             logging.info(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. alive?: {alive}")
                             if not alive:
                                 break
@@ -511,8 +513,17 @@ class Environment():
                 stayingCreatures.append(c)
                 nextCoords.pop(c)
             else: # moving
-                if not self.changeEnergyAndHandleDeath(c, ENERGY_LOSS):
+
+                aliveDict = self.changeEnergyAndHandleDeath(c, ENERGY_LOSS)
+
+                if sum(aliveDict.values()) < 2: # 0 or 1 alive
+                    logging.info(f"Of {c}, all except {sum(aliveDict.values())} are alive during movement due to starvation")
                     nextCoords.pop(c)
+                else:
+                    deadC = [creature for creature,alive in aliveDict.items() if not alive]
+                    for d in deadC:
+                        if d in nextCoords:
+                            nextCoords.pop(d)
                 
         logging.info(f"NextCoords:\n{pprint.pformat(nextCoords)}")
         self.move(nextCoords)
@@ -560,6 +571,9 @@ class Environment():
             erbast_list = cell.getErbastList()
             if erbast_list:
                 logging.info(f"LandCell {cell.getCoords()} has Erbasts: {erbast_list}")
+                if len(erbast_list) != cell.numErbast:
+                    logging.error(f"LandCell {cell.getCoords()} has {cell.numErbast} Erbasts but the list has {len(erbast_list)}")
+                    raise Exception(f"LandCell {cell.getCoords()} has {cell.numErbast} Erbasts but the list has {len(erbast_list)}")
 
         logging.info("LANDCELLS WITH CARVIZES\n")
         for cell in landCells:
@@ -773,7 +787,11 @@ class LandCell(Cell):
             
         elif isinstance(animal, Carviz):
             if animal in self.creatures["Carviz"]:
+                pride = animal.getSocialGroup()
+                if pride:
+                    pride.loseComponent(animal)
                 self.creatures["Carviz"].remove(animal)
+                
                 self.numCarviz -= 1
 
     def addGroup(self, group:'SocialGroup'):
@@ -805,7 +823,7 @@ class LandCell(Cell):
     def removeHerd(self, herd:'Herd'):
         """Remove the herd from the landCell"""
 
-        logging.info(f"Trying to remove herd at coords: {self.coords}, numErbast: {self.numErbast}, "
+        logging.info(f"Trying to remove herd {herd} at coords: {self.coords}, numErbast: {self.numErbast}, "
              f"numCarviz: {self.numCarviz}, herd: {self.herd}")
 
 
@@ -815,6 +833,8 @@ class LandCell(Cell):
             if self.numErbast < 2:
                 self.herd = None
             else:
+                if len(self.creatures["Erbast"]) == 0:
+                    logging.warning(f"herd: {herd} has been removed from the cell {self}, numErbast: {self.numErbast}, but {self.creatures['Erbast']}")
                 self.herd = Herd(self.creatures["Erbast"]) #form a new herd with the remaining erbasts TODO
 
 

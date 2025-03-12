@@ -14,7 +14,7 @@ logging.basicConfig(
     filename="planisuss_events.log",  # Always logs to the same file
     filemode="w",        # "w" overwrites the file on each run
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format="%(levelname)s - %(message)s",
 )
 
 def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10):
@@ -66,6 +66,6 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
             environment.add(carv)
 
 # random.seed(1)
-initializePopulation(environment, "random", 1000, 500)
+initializePopulation(environment, "random", 500, 100)
 
 animation.run_simulation()

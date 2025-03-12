@@ -1,2 +1,2 @@
-- an herd got in a watercell?
 - spawning
+- totErbast is negative

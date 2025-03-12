@@ -1,6 +1,7 @@
 from planisuss_constants import *
 import numpy as np
 import sys
+import random
 import math
 import logging
 from typing import TYPE_CHECKING # to avoid vscode telling me i'm not including libraries that would cause a circular import
@@ -86,7 +87,7 @@ class Species():
         y_max = min(NUMCELLS_C, y + d + 1)
         cands = worldGrid[x_min:x_max, y_min:y_max].reshape(-1)
 
-        logging.info(f"{self}, in position {self.getCoords()}, with neighborhood distance {d} was looking for its neighborhood, i returned {cands}")
+        logging.debug(f"{self}, in position {self.getCoords()}, with neighborhood distance {d} was looking for its neighborhood, i returned {cands}")
 
         # print(f"{self} was looking for its neighborhood, i returned {cands}, with neighborhood {d}")
         # cands = np.delete(cands,len(cands)//2)
@@ -242,7 +243,7 @@ class Erbast(Animal):
         neighborhood = [cell for cell in neighborhood if isinstance(cell, LandCell)]
         desirabilityScores = {cell:0 for cell in neighborhood}
         presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
-        stayingNeed = 15 * math.exp(-Erbast.ENERGY_WEIGHT2 * self.getEnergy()) - Erbast.ENERGY_WEIGHT1
+        stayingNeed = (15 * math.exp(-Erbast.ENERGY_WEIGHT2 * self.getEnergy()) - Erbast.ENERGY_WEIGHT1) * (presentCell.getVegetobDensity()/MAX_GROWTH - 0.5)
 
         for cell in desirabilityScores:
 
@@ -264,12 +265,15 @@ class Erbast(Animal):
                     desirabilityScores[cell] -= carvizDangerValue * 0.6
                     # print(f"nerfed to {desirabilityScores[cell]} ")
 
-            # TODO - this could still be a problem -> if two individuals are next to each other they might never join in a herd (but they could end up in the same cell for other reasons) -> maybe there aren't problems if the other reasons are enough
-
             if presentCell != cell:
                 desirabilityScores[cell] -= stayingNeed
                 if presentCell.numErbast < cell.numErbast: # this avoid herds or individuals in swapping position indefinitely, instead the smaller group will join the bigger one, aslo self counting is avoided
                     desirabilityScores[cell] += cell.numErbast * self.socialAttitude
+                elif presentCell.numErbast == cell.numErbast: # if we are the same number we can join or stay still by random choice
+                    if random.random() > 0.5:
+                        desirabilityScores[cell] += cell.numErbast * self.socialAttitude
+                    else:
+                        desirabilityScores[presentCell] += cell.numErbast * self.socialAttitude
                 elif cell.numErbast > 0: #if they are not more than us, we stil want to join so we stay still
                     desirabilityScores[presentCell] += cell.numErbast * self.socialAttitude
 
@@ -355,6 +359,11 @@ class Carviz(Animal):
             if presentCell != cell:
                 if presentCell.numCarviz < cell.numCarviz:
                     desirabilityScores[cell] += cell.numCarviz * (self.socialAttitude - 0.5) # A carviz might want to stay alone
+                elif presentCell.numCarviz == cell.numCarviz: # if we are the same number we can join or stay still by random choice
+                    if random.random() > 0.5:
+                        desirabilityScores[cell] += cell.numCarviz * self.socialAttitude
+                    else:
+                        desirabilityScores[presentCell] += cell.numCarviz * self.socialAttitude
                 elif cell.numCarviz > 0:
                     desirabilityScores[presentCell] += cell.numCarviz * (self.socialAttitude - 0.5)
 
@@ -510,21 +519,24 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         moveValues = self.rankMoves(worldGrid)
         groupdecidedCoords = max(moveValues, key=moveValues.get)
 
-        logging.info(f"Group {self}, components: {self.getComponents()} want to go in {groupdecidedCoords}") # TODO remove
+        logging.info(f"Group {self}, components: {self.getComponents()} want to go in {groupdecidedCoords}")
 
         leavingIndividualsAndDirection = dict()
         for c in self.getComponents():
             individualValues = c.rankMoves(worldGrid)
+
+            if groupdecidedCoords not in individualValues.keys():
+                logging.error(f"Individual {c} in {c.getCoords()} neighborhood is {individualValues.keys()}")
+
             if individualValues[groupdecidedCoords] < -c.socialAttitude: #if individual preference is lower than the negative social attitude for the group choice
                 individualDecidedCoords = max(individualValues, key=individualValues.get)
                 if groupdecidedCoords != individualDecidedCoords: #and the individual choice is different from the group choice
                     leavingIndividualsAndDirection[c] = individualDecidedCoords # get individual preferred movement
-                    logging.info(f"in: {self.getCoords()}, group wants to go: {groupdecidedCoords}, "
-                                f"erbast: {c} in {c.getCoords()}, wants to go: {max(individualValues, key=individualValues.get)}")
-                    if self.numComponents == 2:
+                    logging.info(f"{c} in {c.getCoords()}, differently from the group, wants to go at: {max(individualValues, key=individualValues.get)}")
+                    if len(leavingIndividualsAndDirection) == self.numComponents - 1:
                         logging.info(f"The group {self} disbanded, the individuals {self.getComponents()} are now free to go")
                         components = self.getComponents()
-                        lastAnimal = [x for x in components if x != c][0]
+                        lastAnimal = [x for x in components if x not in leavingIndividualsAndDirection.keys()][0]
                         lAValues = lastAnimal.rankMoves(worldGrid)
                         leavingIndividualsAndDirection[lastAnimal] = max(lAValues, key=lAValues.get)
                         return leavingIndividualsAndDirection
@@ -618,7 +630,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
         # Staying likability evaluation
         desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells
-        desirabilityScores[presentCell] +=  15 * math.exp(-Erbast.ENERGY_WEIGHT2 * groupEnergy) - Erbast.ENERGY_WEIGHT1
+        desirabilityScores[presentCell] +=  (15 * math.exp(-Erbast.ENERGY_WEIGHT2 * groupEnergy) - Erbast.ENERGY_WEIGHT1) * (presentCell.getVegetobDensity()/MAX_GROWTH - 0.5)
         
         #Runnin away from Carviz
         escapeCellCoords = getCellInDirection(presentCell.getCoords(), self.preferredDirection)
