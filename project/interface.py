@@ -13,12 +13,22 @@ import random
 from matplotlib.gridspec import GridSpec
 import logging
 import traceback
+from datetime import datetime
+import os
 
 logging.basicConfig(level=logging.DEBUG, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     filename='animation_debug.log',
                     filemode='w')
 logger = logging.getLogger('Interface')
+
+log_filename = f"run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+logging.basicConfig(
+    filename="planisuss_events.log",  # Always logs to the same file
+    filemode="w",        # "w" overwrites the file on each run
+    level=logging.INFO,
+    format="%(levelname)s - %(message)s",
+)
 
 class Interface():
 
@@ -40,20 +50,26 @@ class Interface():
     }
     COLORS = (234/255, 222/255, 204/255, 0.7)
 
+    WORLD_CONFIGS = {
+    "map1": {"seed": 1},
+    "map2": {"seed": 15},
+    "map3": {"seed": 44}
+    }
 
-    def __init__(self, env):
-        
-        if not isinstance(env, Environment):
-            raise TypeError(f"Expected env to be an instance of Environment, but got {type(env).__name__} instead.")
-        
-        self.initialize_attributes(env)
-        self.fig_map
-        self.fig_map.canvas.mpl_connect('button_press_event', self.onclick)
-        self.day_text = self.ax_plot.text(0.02, 0.95, f'Day 0', bbox={'facecolor':'w', 'alpha':0.5}, transform=self.ax_plot.transAxes)
+    MAP_PATHS = "files//maps"
 
-    def initialize_attributes(self, env):
-        self.env = env
-        self.grid = self.gridToRGB(env.getGrid())
+    def __init__(self):
+        
+        # if not isinstance(env, Environment):
+        #     raise TypeError(f"Expected env to be an instance of Environment, but got {type(env).__name__} instead.")
+        
+        self.initialize_attributes()
+        self._fig_map = None
+        # self.fig_map.canvas.mpl_connect('button_press_event', self.onclick)
+        # self.day_text = self.ax_plot.text(0.02, 0.95, f'Day 0', bbox={'facecolor':'w', 'alpha':0.5}, transform=self.ax_plot.transAxes)
+        self.fig_menu = None
+
+    def initialize_attributes(self):
         self.img = None
         self.currentDay = 0
         self.maxDay = NUMDAYS
@@ -68,20 +84,43 @@ class Interface():
         self.faster = False
         self.selected_map = None
 
+    def run_simulation(self):
+        plt.ion() 
+        self.start_menu()
+        plt.show(block=True)
+
     def start_menu(self):
-        plt.ion()
-        fig_menu = plt.figure(figsize=(10,10))
-        gs_menu = GridSpec(2, 3, figure=fig_menu, height_ratios=[1, 3], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.05, hspace=0.3)
-        ax_title = fig_menu.add_subplot(gs_menu[0, 1])
-        ax_title.set_title("Image Title")
+        self.fig_menu = plt.figure(figsize=(8,8))
+        self.fig_menu.set_facecolor(self.COLORS)
+        gs_menu = GridSpec(2, 3, figure=self.fig_menu, height_ratios=[5.5, 3], 
+                    width_ratios=[1.5, 1.5, 1.5], 
+                    left=0.1, right=0.9, top=0.95, bottom=0.1, 
+                    wspace=0.05, hspace=0.5)
+        
+        ax_title = self.fig_menu.add_subplot(gs_menu[0, :])
+        logo_img = Image.open("files//planisuss_logo.jpg")
+        ax_title.imshow(logo_img)
+        
+        ax_title.set_title("Choose a map to start the simulation", loc='center', fontweight='bold')
         ax_title.axis('off')
 
-        ax_map1 = fig_menu.add_subplot(gs_menu[1, 0])
-        ax_map2 = fig_menu.add_subplot(gs_menu[1, 1])
-        ax_map3 = fig_menu.add_subplot(gs_menu[1, 2])
-        
-        fig_menu.canvas.mpl_connect('button_press_event', lambda event: self.choose_map(fig_menu, event))
-        # fig_menu.show()
+        ax_map1 = self.fig_menu.add_subplot(gs_menu[1, 0])
+        ax_map2 = self.fig_menu.add_subplot(gs_menu[1, 1])
+        ax_map3 = self.fig_menu.add_subplot(gs_menu[1, 2])
+
+        ax_map1.set_title("Map 1")
+        ax_map1.imshow(Image.open(f"{self.MAP_PATHS}//map_seed_{self.WORLD_CONFIGS['map1']['seed']}.png"))
+        ax_map1.axis('off')
+
+        ax_map2.set_title("Map 2")
+        ax_map2.axis('off')
+
+        ax_map3.set_title("Map 3")
+        ax_map3.axis('off')
+
+        self.fig_menu.canvas.mpl_connect('button_press_event', lambda event: self.choose_map(self.fig_menu, event))
+    
+        self.fig_menu.show()
     
     def choose_map(self, fig_menu, event):
         if event.inaxes not in fig_menu.get_axes(): return
@@ -89,17 +128,120 @@ class Interface():
         title, map1, map2, map3 = list(fig_menu.get_axes())
         
         if event.inaxes == title:
-            print('Title clicked')
+                print('Title clicked')
         elif event.inaxes == map1:
             print("map1 clicked")
+            self.selected_map = "map1"
+            seed = self.WORLD_CONFIGS[self.selected_map]["seed"]
+            self.set_environment(seed)
         elif event.inaxes == map2:
             print("map2 clicked")
+            self.selected_map = "map2"
+            seed = self.WORLD_CONFIGS[self.selected_map]["seed"]
+            self.set_environment(seed)
         elif event.inaxes == map3:
             print("map3 clicked")
+            self.selected_map = "map3"
+            seed = self.WORLD_CONFIGS[self.selected_map]["seed"]
+            self.set_environment(seed)
 
-    @property
-    def fig_map(self):
-        if not hasattr(self, '_fig_map'):
+    def set_environment(self, seed):
+        environment = Environment(seed=seed)
+        self.env = environment
+        self.grid = self.gridToRGB(environment.getGrid(), save=True, seed=seed)
+        self.initialize_population(environment, type="random", nErb=10, nCarv=10)
+        self.create_map_and_start()
+
+    def initialize_population(self, environment, type:str = "test1", nErb = 10, nCarv = 10):
+        grid_shape = environment.getGrid().shape
+        land_cells = [(x, y) for x in range(grid_shape[0]) for y in range(grid_shape[1])
+                    if environment.isLand(x, y)]
+
+        if type == "test1":
+            erb1 = Erbast((25,25), energy=100, name="schiavo 1")
+            erb2 = Erbast((25,25), energy=5, name="schiavo 2")
+            erb3 = Erbast((25,25), energy=5, name="schiavo 3")
+            herd1 = Herd([erb1,erb2,erb3])
+            environment.add(herd1)
+
+            erbOther = Erbast((24,25), energy=100, name="schiavo 4")
+            erbOther2 = Erbast((24,25), energy=5, name = "schiavo 5")
+            herd2 = Herd([erbOther, erbOther2])
+            environment.add(herd2)
+
+            carv1 = Carviz((24, 24))
+            carv2 = Carviz((24, 24))
+            pride1 = Pride([carv1,carv2])
+            environment.add(pride1)
+
+            carv3 = Carviz((26,26))
+            carv4 = Carviz((26,26), SocialAttitude = 0.8)
+            carv5 = Carviz((26,26))
+            pride2 = Pride([carv3,carv4,carv5])
+            environment.add(pride2)
+
+        if type == "test2":
+            erb1 = Erbast((25,25), energy=60, name="schiavo 1")
+            carv1 = Carviz((24, 24))
+            environment.add(erb1)
+            environment.add(carv1)
+            environment.add(Carviz((26,26)))
+
+        if type == "test_offsprings":
+
+            erbs = [
+                Erbast((25,25)),
+                Erbast((25,25)),
+                Erbast((25,25)),
+                Erbast((28,28)),
+                Erbast((28,28)),
+                Erbast((30,30))
+            ]
+
+            carvs = [
+                Carviz((24, 24)),
+                Carviz((24, 24)),
+                Carviz((24, 24)),
+                Carviz((26, 26)),
+                Carviz((26, 26)),
+                Carviz((26, 26))
+            ]
+
+            for el in erbs:
+                environment.add(el)
+            for el in carvs:
+                environment.add(el)
+
+        if type == "one Erbast":
+            erb = Erbast((25,25))
+            environment.add(erb)
+
+        if type == "random":
+            for i in range(nErb):
+                (x, y) = random.choice(land_cells)
+                # coords = (random.randint(20,30), random.randint(20,30))
+                erb = Erbast((x, y), SocialAttitude = random.random())
+                environment.add(erb)
+
+            for i in range(nCarv):
+                (x, y) = random.choice(land_cells)
+                # coords = (random.randint(20,30), random.randint(20,30))
+                carv = Carviz((x, y), SocialAttitude = random.random())
+                environment.add(carv)
+
+    def create_map_and_start(self):
+        plt.close(self.fig_menu)
+
+        self._fig_map = self.create_fig_map()
+        self._fig_map.canvas.mpl_connect('button_press_event', self.onclick)
+        self.day_text = self.ax_plot.text(0.02, 0.95, f'Day 0', 
+                                      bbox={'facecolor':'w', 'alpha':0.5}, 
+                                      transform=self.ax_plot.transAxes)
+        
+        self.start()
+
+    def create_fig_map(self):
+        if self._fig_map is None:
             self._fig_map = plt.figure(figsize=(7, 7))
             self._fig_map.set_facecolor(self.COLORS)
             self.gs_map = GridSpec(2, 2, height_ratios=[6, 1], width_ratios=[6, 1], figure=self._fig_map)
@@ -118,11 +260,11 @@ class Interface():
 
 
     def setup_controls(self):
-        gs_controls = GridSpec(1, 3, figure=self.fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
+        gs_controls = GridSpec(1, 3, figure=self._fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
         controls = {
-            'ax_pause' : (self.fig_map.add_subplot(gs_controls[0, 0]), "files//pause.png"),
-            'ax_play' : (self.fig_map.add_subplot(gs_controls[0, 1]), "files//play.png"),
-            'ax_x2' : (self.fig_map.add_subplot(gs_controls[0, 2]), "files//x2.png")
+            'ax_pause' : (self._fig_map.add_subplot(gs_controls[0, 0]), "files//pause.png"),
+            'ax_play' : (self._fig_map.add_subplot(gs_controls[0, 1]), "files//play.png"),
+            'ax_x2' : (self._fig_map.add_subplot(gs_controls[0, 2]), "files//x2.png")
         
         }
         for name, (ax, pathImg) in controls.items():   
@@ -135,7 +277,7 @@ class Interface():
                 print('The image was not found')
                 img = None
                 setattr(self, name, None)
-        self.fig_map.show
+        self._fig_map.show()
 
 
     def update(self, frameNum, img):
@@ -297,7 +439,7 @@ class Interface():
             self.pause_animation()
 
         
-    def gridToRGB(self, grid):
+    def gridToRGB(self, grid, save=False, seed=None):
         """ This method translates the environment grid to an RGB matric for visualization"""
         # in future this will be way more complex
         grid_rgb = np.zeros((grid.shape[0], grid.shape[1], 3), dtype=np.uint8)
@@ -318,6 +460,13 @@ class Interface():
         self.apply_filter(gradient_land, base_color_land, land_mask, grid_rgb)
         self.apply_filter(gradient_water, base_color_water, water_mask, grid_rgb)
         
+        if save and seed is not None:
+            filepath = f"files//maps//map_seed_{seed}.png"
+        
+            if not os.path.exists(filepath):
+                img = Image.fromarray(grid_rgb)
+                img.save(filepath)
+        
         return grid_rgb
     
     def apply_filter(self, gradient_arr, base_color, mask, grid_rgb):
@@ -333,7 +482,7 @@ class Interface():
                 self.img = self.display_initial_setup()
                 plt.pause(1)
             # self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
-            self.ani = FuncAnimation(self.fig_map, self.update, frames=list(range(1, self.maxDay + 1)), fargs=(self.img,),
+            self.ani = FuncAnimation(self._fig_map, self.update, frames=list(range(1, self.maxDay + 1)), fargs=(self.img,),
                                 interval=2000,
                                 blit=False,
                                 repeat=False,
@@ -425,9 +574,9 @@ class Interface():
         height_ratios = [0.1 for _ in range(total_rows)]
         gs_animals = GridSpec(total_rows, 1, figure=fig, height_ratios=height_ratios, width_ratios=[0.1], left=0.7, right=0.95, top=0.9, bottom=0.1) 
         
-        axis_erbast = self.axis_individuals(tot_erbast, fig, gs_animals, 0, erbast=True, carviz=False, list_animals= erbast_list, empty=erbast_empty)
-        axis_carviz = self.axis_individuals(tot_carviz, fig, gs_animals, tot_erbast+1, erbast=False, carviz=True, list_animals = carviz_list, empty=carviz_empty)
-        axis_dead = self.axis_individuals(tot_dead, fig, gs_animals, tot_erbast+tot_carviz+2, erbast=False, carviz=False, list_animals = dead_list, empty=dead_empty)   
+        axis_erbast = self.axis_individuals(tot_erbast, fig, gs_animals, 0, erbast=True, carviz=False, list_animals= erbast_list, empty=erbast_empty, dead_empty=dead_empty)
+        axis_carviz = self.axis_individuals(tot_carviz, fig, gs_animals, tot_erbast+1, erbast=False, carviz=True, list_animals = carviz_list, empty=carviz_empty, dead_empty=dead_empty)
+        axis_dead = self.axis_individuals(tot_dead, fig, gs_animals, tot_erbast+tot_carviz+2, erbast=False, carviz=False, list_animals = dead_list, empty=dead_empty, dead_empty=dead_empty)   
         
         print("erbast axis", axis_erbast)
         print("carviz axis", axis_carviz)
@@ -439,7 +588,7 @@ class Interface():
 
         fig.canvas.mpl_connect('button_press_event', lambda event: self.track_onclick(event, self.individuals_axis))
     
-    def axis_individuals(self, n : int, fig, gs, start_row, erbast : bool, carviz : bool, list_animals : list, empty : bool):
+    def axis_individuals(self, n : int, fig, gs, start_row, erbast : bool, carviz : bool, list_animals : list, empty : bool, dead_empty : bool):
         title_pos = start_row
         ax_title = fig.add_subplot(gs[title_pos, 0])
         if erbast:
@@ -450,8 +599,15 @@ class Interface():
             t = f"Dead animals in cell"
         ax_title.text(0.3, 0.3, t, ha='center')
         ax_title.axis('off')
-        
-        s_empty = 'There are no Erbast in cell' if empty and erbast else 'There is no Carviz in cell'
+
+        if erbast and empty:
+            s_empty = 'There are no Erbast in cell'
+        elif carviz and empty:
+            s_empty = 'There are no Carviz in cell'
+        elif not erbast and not carviz and dead_empty:
+            s_empty = 'There are no dead animals in cell'
+        else:
+            s_empty = 'No animals in this category'
         individuals_axis = []
         for i in range(n):
             ax = fig.add_subplot(gs[start_row + 1 + i, 0])
@@ -596,11 +752,6 @@ class Interface():
             return self.IMAGE_PATHS['ENERGY']['MEDIUM']
         return self.IMAGE_PATHS['ENERGY']['HIGH']
 
-
-    def run_simulation(self):
-        # self.start_menu()
-        self.start()
-        plt.show()
 
 
 

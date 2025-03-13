@@ -7,7 +7,7 @@ from creatures import Erbast, Carviz, Herd, Pride
 
 WORLD_CONFIGS = {
     "map1": {"seed": 1},
-    "map2": {"seed": 5},
+    "map2": {"seed": 42},
     "map3": {"seed": 10},
 }
 
@@ -96,15 +96,9 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
             carv = Carviz((x, y), SocialAttitude = random.random())
             environment.add(carv)
 
-def run_simulation(selected_map="map1"):
-    if selected_map not in WORLD_CONFIGS:
-        raise ValueError(f"Invalid map selection: {selected_map}.  Choose from {list(WORLD_CONFIGS.keys())}")
-
-    config = WORLD_CONFIGS[selected_map]
-    environment = Environment(seed=config["seed"])
-    initializePopulation(environment, "test_offsprings")  # Initialize population after environment creation
-    animation = Interface(env=environment)
+def simulation():
+    animation = Interface()
     animation.run_simulation()
 
 if __name__ == "__main__":
-    run_simulation("map1")
+    simulation()
