@@ -1,7 +1,9 @@
 from planisuss_constants import *
 import numpy as np
 import sys
+import random
 import math
+import logging
 from typing import TYPE_CHECKING # to avoid vscode telling me i'm not including libraries that would cause a circular import
 if TYPE_CHECKING:
     from world import WorldGrid
@@ -79,7 +81,14 @@ class Species():
         """
         x, y = self.coords[0], self.coords[1]
         d = d if d is not None else self.neighborhoodDistance
-        cands = worldGrid[x - d : x + d + 1, y - d : y + d + 1].reshape(-1)
+        x_min = max(0, x - d)
+        x_max = min(NUMCELLS_R, x + d + 1)
+        y_min = max(0, y - d)
+        y_max = min(NUMCELLS_C, y + d + 1)
+        cands = worldGrid[x_min:x_max, y_min:y_max].reshape(-1)
+
+        logging.debug(f"{self}, in position {self.getCoords()}, with neighborhood distance {d} was looking for its neighborhood, i returned {cands}")
+
         # print(f"{self} was looking for its neighborhood, i returned {cands}, with neighborhood {d}")
         # cands = np.delete(cands,len(cands)//2)
         return cands
@@ -128,6 +137,7 @@ class Animal(Species):
         elif self.energy + amount < 0:
             self.energy = 0
             self.alive = False
+            logging.info(f"{self} died of starvation")
         else:
             self.energy = MAX_ENERGY
         return {self:self.alive}
@@ -142,15 +152,20 @@ class Animal(Species):
             else: 
                 self.age = self.lifetime
                 self.alive = False
+                logging.info(f"{self} died of old age")
             if self.age % 10 == 0:
                 self.energy -= AGING
+                if self.energy <= 0:
+                    self.energy = 0
+                    self.alive = False
+                    logging.info(f"{self} died of starvation due to aging")
         else:
-            raise RuntimeError(f"Cannot age a dead animal: {self}")
+            raise RuntimeError(f"Cannot age a dead animal: {self}, age: {self.age}, lifetime: {self.lifetime}")
         
         return self.alive
 
     def die(self):
-        if self.inSocialGroup:
+        if isinstance(self, Carviz) and self.inSocialGroup:
             socG = self.socialGroup
             socG.loseComponent(self)
         self.alive = False
@@ -228,7 +243,7 @@ class Erbast(Animal):
         neighborhood = [cell for cell in neighborhood if isinstance(cell, LandCell)]
         desirabilityScores = {cell:0 for cell in neighborhood}
         presentCell = self.getCell(worldGrid) # presentCell should be in neighborhood
-        stayingNeed = 15 * math.exp(-Erbast.ENERGY_WEIGHT2 * self.getEnergy()) - Erbast.ENERGY_WEIGHT1
+        stayingNeed = (15 * math.exp(-Erbast.ENERGY_WEIGHT2 * self.getEnergy()) - Erbast.ENERGY_WEIGHT1) * (presentCell.getVegetobDensity()/MAX_GROWTH - 0.5)
 
         for cell in desirabilityScores:
 
@@ -250,12 +265,15 @@ class Erbast(Animal):
                     desirabilityScores[cell] -= carvizDangerValue * 0.6
                     # print(f"nerfed to {desirabilityScores[cell]} ")
 
-            # TODO - this could still be a problem -> if two individuals are next to each other they might never join in a herd (but they could end up in the same cell for other reasons) -> maybe there aren't problems if the other reasons are enough
-
             if presentCell != cell:
                 desirabilityScores[cell] -= stayingNeed
                 if presentCell.numErbast < cell.numErbast: # this avoid herds or individuals in swapping position indefinitely, instead the smaller group will join the bigger one, aslo self counting is avoided
                     desirabilityScores[cell] += cell.numErbast * self.socialAttitude
+                elif presentCell.numErbast == cell.numErbast: # if we are the same number we can join or stay still by random choice
+                    if random.random() > 0.5:
+                        desirabilityScores[cell] += cell.numErbast * self.socialAttitude
+                    else:
+                        desirabilityScores[presentCell] += cell.numErbast * self.socialAttitude
                 elif cell.numErbast > 0: #if they are not more than us, we stil want to join so we stay still
                     desirabilityScores[presentCell] += cell.numErbast * self.socialAttitude
 
@@ -266,11 +284,12 @@ class Erbast(Animal):
         
         # Running away from carviz
         escapeCellCoords = getCellInDirection(presentCell.getCoords(), self.preferredDirection)
-        escapeCell = worldGrid[escapeCellCoords]
-        if escapeCell in neighborhood and escapeCell != presentCell and self.preferredDirectionIntensity > Erbast.ESCAPE_THRESHOLD:
-            # print(f"Oh no I'm {self}, I'm in {self.getCoords()} and there's a Carviz nearby, better go in {escapeCell.getCoords()}")
-            desirabilityScores[escapeCell] += self.preferredDirectionIntensity
-            self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
+        if checkCoordsInBoundary(escapeCellCoords):
+            escapeCell = worldGrid[escapeCellCoords]
+            if escapeCell in neighborhood and escapeCell != presentCell and self.preferredDirectionIntensity > Erbast.ESCAPE_THRESHOLD:
+                # print(f"Oh no I'm {self}, I'm in {self.getCoords()} and there's a Carviz nearby, better go in {escapeCell.getCoords()}")
+                desirabilityScores[escapeCell] += self.preferredDirectionIntensity
+                self.preferredDirectionIntensity *= Erbast.ESCAPE_DECAY
 
         for cell in desirabilityScores:
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
@@ -340,11 +359,16 @@ class Carviz(Animal):
             if presentCell != cell:
                 if presentCell.numCarviz < cell.numCarviz:
                     desirabilityScores[cell] += cell.numCarviz * (self.socialAttitude - 0.5) # A carviz might want to stay alone
+                elif presentCell.numCarviz == cell.numCarviz: # if we are the same number we can join or stay still by random choice
+                    if random.random() > 0.5:
+                        desirabilityScores[cell] += cell.numCarviz * self.socialAttitude
+                    else:
+                        desirabilityScores[presentCell] += cell.numCarviz * self.socialAttitude
                 elif cell.numCarviz > 0:
                     desirabilityScores[presentCell] += cell.numCarviz * (self.socialAttitude - 0.5)
 
         # Staying likability evaluation - carviz are very unlikely to stay still, they're constantly looking for Erbasts
-        desirabilityScores[presentCell] -= ((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT) #when the energy is low a prey must be found
+        desirabilityScores[presentCell] -= round(((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT),2) #when the energy is low a prey must be found
 
         for cell in desirabilityScores:
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
@@ -374,7 +398,7 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
                 if not isinstance(animal, Animal):
                     raise Exception(f"All Individuals should be Animals, received instead {animal}")
                 if animal.getCoords() != self.coords:
-                    raise Exception(f"All Animals should inhabit the same cell, individual {animal} is in {animal.getCoords()}, it should be in {self.coords}")
+                    raise Exception(f"All Animals should inhabit the same cell, individual {animal} is in {animal.getCoords()}, it should be in {self.coords}. Herd is {self}, components are {components}")
 
         self.components = components
         
@@ -436,7 +460,7 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         other.numComponents = 0
         # TODO -join knowledge        
     
-    def loseComponent(self, animal:Animal): #TODO if we are alone? Destroy herd? is this happening somewhere else?
+    def loseComponent(self, animal:Animal):
         if not isinstance(animal, Animal):
             raise ValueError("animal must be an instance of Animal")
         
@@ -453,20 +477,29 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
                 "result": "Group Disbanded",
                 "individuals":[animal,lastAnimal]
                 }
+        elif len(self.components) == 1:
+            self.components.remove(animal)
+            animal.inSocialGroup = False
+            animal.socialGroup = None
+            self.numComponents -= 1
+            return {
+                "result": "Group Disbanded",
+                "lost individual": animal
+            }
         elif len(self.components) == 0:
             return {
                 "result": "Group Already Disbanded",
                 "individuals":[]
                 }
-        
-        self.components.remove(animal)
-        animal.inSocialGroup = False
-        animal.socialGroup = None
-        self.numComponents -= 1
-        return {
-            "result": "All Good",
-            "lost individual": animal
-        }
+        else:
+            self.components.remove(animal)
+            animal.inSocialGroup = False
+            animal.socialGroup = None
+            self.numComponents -= 1
+            return {
+                "result": "All Good",
+                "lost individual": animal
+            }
 
     def disband(self):
         """Remove all components from group and set numComponents from 0, returns the empty group"""
@@ -476,29 +509,39 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
         self.numComponents = 0
         return self
 
-    def moveChoice(self, worldGrid: 'WorldGrid', applyConsequences:bool = True) -> dict['Species', tuple[int, int]]:
+    def moveChoice(self, worldGrid: 'WorldGrid') -> dict['Species', tuple[int, int]]:
         """
         In this method the group decision is assessed and eventual leaving components are identified with their preferred direction,
         if applyConsequences is True, leaving individuals will be removed from the herd
         """
+
+
         moveValues = self.rankMoves(worldGrid)
         groupdecidedCoords = max(moveValues, key=moveValues.get)
-        # print(f"{self} choosed:\n {self.rankMoves(worldGrid)}")
+
+        logging.info(f"Group {self}, components: {self.getComponents()} want to go in {groupdecidedCoords}")
+
         leavingIndividualsAndDirection = dict()
         for c in self.getComponents():
             individualValues = c.rankMoves(worldGrid)
-            # print(self, "in: ",self.getCoords(),"group want to go: ",groupdecidedCoords, "erbast",c, "in ",c.getCoords(), "preference is:",individualValues)
+
+            if groupdecidedCoords not in individualValues.keys():
+                logging.error(f"Individual {c} in {c.getCoords()} neighborhood is {individualValues.keys()}")
+
             if individualValues[groupdecidedCoords] < -c.socialAttitude: #if individual preference is lower than the negative social attitude for the group choice
-                leavingIndividualsAndDirection[c] = max(individualValues, key=individualValues.get) # get individual preferred movement
-                if applyConsequences:
-                    result = self.loseComponent(c)
-                    if result["result"] == 'Group Disbanded':
-                        lastAnimal = result["individuals"][1]
+                individualDecidedCoords = max(individualValues, key=individualValues.get)
+                if groupdecidedCoords != individualDecidedCoords: #and the individual choice is different from the group choice
+                    leavingIndividualsAndDirection[c] = individualDecidedCoords # get individual preferred movement
+                    logging.info(f"{c} in {c.getCoords()}, differently from the group, wants to go at: {max(individualValues, key=individualValues.get)}")
+                    if len(leavingIndividualsAndDirection) == self.numComponents - 1:
+                        logging.info(f"The group {self} disbanded, the individuals {self.getComponents()} are now free to go")
+                        components = self.getComponents()
+                        lastAnimal = [x for x in components if x not in leavingIndividualsAndDirection.keys()][0]
                         lAValues = lastAnimal.rankMoves(worldGrid)
                         leavingIndividualsAndDirection[lastAnimal] = max(lAValues, key=lAValues.get)
                         return leavingIndividualsAndDirection
         
-        choices = {self:groupdecidedCoords,**leavingIndividualsAndDirection}
+        choices = {**leavingIndividualsAndDirection, self:groupdecidedCoords}
         return choices
 
     def __repr__(self):
@@ -522,6 +565,9 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         Herd.ID += 1
         self.preferredDirection = None
         self.preferredDirectionIntensity = 1 # number from 0 to 1
+
+        logging.info(f"HERD CREATION -> Herd {self.id} with components: {self.components}, current coords: {self.coords}, last coords: {self.lastCoords}, neighborhood distance: {self.neighborhoodDistance}, memory: {self.memory}")
+
 
     def rankMoves(self, worldGrid:'WorldGrid'):
         """
@@ -584,7 +630,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
         # Staying likability evaluation
         desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells
-        desirabilityScores[presentCell] +=  15 * math.exp(-Erbast.ENERGY_WEIGHT2 * groupEnergy) - Erbast.ENERGY_WEIGHT1
+        desirabilityScores[presentCell] +=  (15 * math.exp(-Erbast.ENERGY_WEIGHT2 * groupEnergy) - Erbast.ENERGY_WEIGHT1) * (presentCell.getVegetobDensity()/MAX_GROWTH - 0.5)
         
         #Runnin away from Carviz
         escapeCellCoords = getCellInDirection(presentCell.getCoords(), self.preferredDirection)
@@ -648,7 +694,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             if veg > 0:
                 erb.graze(veg)
             else: #if not eating reduce socialAttitude
-                erb.socialAttitude -= Erbast.NOT_EATING_SA_REDUCTION
+                erb.socialAttitude = max(0, erb.socialAttitude - Erbast.NOT_EATING_SA_REDUCTION)
         return sum(assignedVegetobs)
 
     def __repr__(self):
