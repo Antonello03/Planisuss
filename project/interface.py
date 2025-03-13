@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle, BoxStyle, Rectangle
 from world import *
 from planisuss_constants import *
 from PIL import Image
@@ -50,14 +50,18 @@ class Interface():
         self.img = None
         self.currentDay = 0
         self.maxDay = NUMDAYS
-        self.animal_artists = []
+        self.animal_artists_map = {}
+        self.vegetob_artists = []
+        self.processed_dead_animals = set()
         self.info_box = None
         self.expand = False
         self.anim_running = False
         self.ani = None
         self.faster = False
+        self.selected_map = None
 
     def start_menu(self):
+        plt.ion()
         fig_menu = plt.figure(figsize=(10,10))
         gs_menu = GridSpec(2, 3, figure=fig_menu, height_ratios=[1, 3], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.05, hspace=0.3)
         ax_title = fig_menu.add_subplot(gs_menu[0, 1])
@@ -136,29 +140,17 @@ class Interface():
             return [img]
         
         self.env.nextDay()
-        # img.set_data(self.grid)
         img = self.ax_plot.imshow(self.grid, interpolation='nearest')
         print(f"{frameNum} and {self.currentDay}")
-        # plt.pause(3)
         self.day_text.set_text(f"Day: {self.currentDay}")
         
-        # newGrid = self.env.getGrid()
-        # rgbGrid = self.gridToRGB(newGrid)
-
-        # img.set_data(self.grid)
-
-        for artist in self.animal_artists:
+        for artist in self.vegetob_artists:
             artist.remove()
-        self.animal_artists.clear()
+        self.vegetob_artists.clear()
 
-        if not self.animal_artists:
-           self.draw_elements(self.grid)
-        else:
-            print("The artist list should be cleared")
+        self.draw_elements(self.grid)
         
-        # self.currentDay += 1
-    
-        return [img, self.day_text] + self.animal_artists
+        return [img, self.day_text] + list(self.animal_artists_map.values()) + self.vegetob_artists
     
     def draw_elements(self, grid):
         for i in range(grid.shape[0]):
@@ -171,28 +163,63 @@ class Interface():
     def draw_animals_in_cell(self, cell):
         erbast_list = cell.getErbastList()
         carviz_list = cell.getCarvizList()
+        dead_list = cell.getDeadCreaturesList()
+
+        already_seen = set()
         
-        for erbast in erbast_list:
-            self.draw_animal(erbast)
-            
-        for carviz in carviz_list:
-            self.draw_animal(carviz)
-            
-    def draw_animal(self, animal):
-        shift_x = np.random.uniform(-0.3, 0.3)
-        shift_y = np.random.uniform(-0.3, 0.3)
-        x, y = animal.getCoords()
-        # print('coordinates', (x, y))
-        if isinstance(animal, Erbast):
-            color = [216 / 255, 158 / 255, 146 / 255]
-        elif isinstance(animal, Carviz):
-            color = [139 / 255, 0 / 255, 0 / 255]
+        for animal in erbast_list + carviz_list:
+            already_seen.add(animal)
+            redraw = animal in dead_list
+            self.draw_animal(animal, redraw=redraw)
+
+        if dead_list:
+            print("There are dead animals")
+            print(len(dead_list))
+            for dead in dead_list:
+                if dead not in already_seen and dead not in self.processed_dead_animals:
+                    self.draw_animal(dead, redraw=True)
+                    self.processed_dead_animals.add(dead)
+
+    def draw_animal(self, animal, redraw=False):
+        
+        shift_x, shift_y = np.random.uniform(-0.3, 0.3, 2)
+        x, y = animal.getCoords()        
+
+        if animal in self.animal_artists_map:
+            current_artist = self.animal_artists_map[animal]
+            if redraw:
+                print(f"animal is now dead")
+                current_artist.remove()
+                del self.animal_artists_map[animal]
+                print(animal)
+                color = [192 / 255, 192 / 255, 192 / 255]
+                new_artist = Rectangle(xy=(y + shift_y, x + shift_x), width=0.2, height=0.2, color=color, fill=True, alpha=1)
+                self.ax_plot.add_artist(new_artist)
+                self.animal_artists_map[animal] = new_artist
+                self.processed_dead_animals.add(animal)  # Mark as processed
+            else:
+                if isinstance(current_artist, Circle):
+                    current_artist.center = (y + shift_y, x + shift_x)
+                return current_artist    
         else:
-            color = [192 / 255, 192 / 255, 192 / 255]
-        point = Circle((y + shift_y, x + shift_x), radius=0.1, color=color, alpha=1)
-        self.ax_plot.add_artist(point)
-        self.animal_artists.append(point)
-    
+            print("Animal not in map")
+            if redraw:
+                print(f"animal is dead and was not in map")
+                print(animal)
+                color = [192 / 255, 192 / 255, 192 / 255]
+                new_artist = Rectangle(xy=(y + shift_y, x + shift_x), width=0.2, height=0.2, color=color, fill=True, alpha=1)
+                self.ax_plot.add_artist(new_artist)
+                self.animal_artists_map[animal] = new_artist
+                self.processed_dead_animals.add(animal)  # Mark as processed
+            else:
+                if isinstance(animal, Erbast):
+                    color = [216 / 255, 158 / 255, 146 / 255]
+                else:
+                    color = [139 / 255, 0 / 255, 0 / 255]
+                new_artist = Circle((y + shift_y, x + shift_x), radius=0.1, color=color, alpha=1)
+                self.animal_artists_map[animal] = new_artist
+                self.ax_plot.add_artist(new_artist)        
+        
     def draw_vegetob(self, cell, i, j):
         cell_density = cell.getVegetobDensity()
         # print(f"cell density: {cell_density}")          
@@ -200,7 +227,7 @@ class Interface():
         color_vegetob = (0, green_intensity, 0)
         rectangle = plt.Rectangle((j - 0.5, i - 0.5), 1, 1, color=color_vegetob, alpha=0.4)
         self.ax_plot.add_artist(rectangle)
-        self.animal_artists.append(rectangle)
+        self.vegetob_artists.append(rectangle)
         
     def onclick(self, event):
         if event.inaxes not in [self.ax_pause, self.ax_play, self.ax_x2, self.ax_plot]: return
@@ -286,9 +313,11 @@ class Interface():
     def display_initial_setup(self):
         initial_grid = self.grid
 
-        for artist in self.animal_artists:
+        for artist in self.animal_artists_map.values():
             artist.remove()
-        self.animal_artists.clear()
+        
+        self.animal_artists_map.clear()
+        # self.animal_artists.clear()
 
         self.draw_elements(initial_grid)
 
@@ -335,6 +364,15 @@ class Interface():
         
         erbast_list = cell.getErbastList()
         carviz_list = cell.getCarvizList()
+        dead_list = cell.getDeadCreaturesList()
+        if dead_list:
+            print("There are dead animals in the cell")
+            tot_dead = len(dead_list)
+            dead_empty = False
+        else:
+            print("There are no dead animals in the cell")
+            tot_dead = 1
+            dead_empty = True
         if erbast_list:
             tot_erbast = len(erbast_list)
             erbast_empty = False
@@ -351,31 +389,36 @@ class Interface():
             carviz_empty = True
         print(f"Amount of erbasts in cell {x, y}= {erbast_list} sum {tot_erbast}")
         print(f"Amount of erbasts in cell {x, y}= {carviz_list} sum {tot_carviz}")
-        total_rows = tot_erbast + tot_carviz + 2
+        total_rows = tot_erbast + tot_carviz + tot_dead + 3
         height_ratios = [0.1 for _ in range(total_rows)]
         gs_animals = GridSpec(total_rows, 1, figure=fig, height_ratios=height_ratios, width_ratios=[0.1], left=0.7, right=0.95, top=0.9, bottom=0.1) 
         
-        axis_erbast = self.axis_individuals(tot_erbast, fig, gs_animals, 0, erbast=True, list_animals= erbast_list, empty=erbast_empty)
-        axis_carviz = self.axis_individuals(tot_carviz, fig, gs_animals, tot_erbast+1, erbast=False, list_animals = carviz_list, empty=carviz_empty)   
+        axis_erbast = self.axis_individuals(tot_erbast, fig, gs_animals, 0, erbast=True, carviz=False, list_animals= erbast_list, empty=erbast_empty)
+        axis_carviz = self.axis_individuals(tot_carviz, fig, gs_animals, tot_erbast+1, erbast=False, carviz=True, list_animals = carviz_list, empty=carviz_empty)
+        axis_dead = self.axis_individuals(tot_dead, fig, gs_animals, tot_erbast+tot_carviz+2, erbast=False, carviz=False, list_animals = dead_list, empty=dead_empty)   
         
         print("erbast axis", axis_erbast)
         print("carviz axis", axis_carviz)
 
-        self.individuals_axis = axis_erbast + axis_carviz
+        self.individuals_axis = axis_erbast + axis_carviz + axis_dead
 
         fig.canvas.draw()
         fig.show()
 
         fig.canvas.mpl_connect('button_press_event', lambda event: self.track_onclick(event, self.individuals_axis))
     
-    def axis_individuals(self, n : int, fig, gs, start_row, erbast : bool, list_animals : list, empty : bool):
+    def axis_individuals(self, n : int, fig, gs, start_row, erbast : bool, carviz : bool, list_animals : list, empty : bool):
         title_pos = start_row
         ax_title = fig.add_subplot(gs[title_pos, 0])
-        t = f"Erbast in cell" if erbast else f"Carviz in cell"
+        if erbast:
+            t = f"Erbast in cell"
+        elif carviz:
+            t = f"Carviz in cell"
+        else:
+            t = f"Dead animals in cell"
         ax_title.text(0.3, 0.3, t, ha='center')
         ax_title.axis('off')
-
-        s = 'Erbast' if erbast else 'Carviz'
+        
         s_empty = 'There are no Erbast in cell' if empty and erbast else 'There is no Carviz in cell'
         individuals_axis = []
         for i in range(n):
@@ -384,7 +427,14 @@ class Interface():
                 ax.text(0.3, 0.3, f"{s_empty}", ha='center', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
                 individuals_axis.append((ax, None))
             else:
-                ax.text(0.3, 0.3, f"{s+str(i+1)}", ha='center', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
+                animal = list_animals[i]
+                if isinstance(animal, Erbast):
+                    s = f"Erbast{str(animal.id)}"
+                elif isinstance(animal, Carviz):
+                    s = f"Carviz{str(animal.id)}"
+                else:
+                    s = f"Dead animal {str(animal.old_species)}{str(animal.id)}"
+                ax.text(0.3, 0.3, f"{s}", ha='center', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
                 individuals_axis.append((ax, list_animals[i]))
 
             ax.axis('off')
@@ -407,6 +457,8 @@ class Interface():
                         left=0.05, right=0.95, top=0.9, bottom=0.1)
         
         # Create subplots
+        if isinstance(clicked_individual, DeadCreature):
+            clicked_individual = clicked_individual.deadAnimal
         self.create_animal_subplot(fig, gs_stats, clicked_individual)
         self.create_age_subplot(fig, gs_stats, clicked_individual.age)
         self.create_energy_subplot(fig, gs_stats, clicked_individual.getEnergy())
@@ -423,6 +475,9 @@ class Interface():
                     fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
         social_group = "Individual belongs to a social group" if clicked_individual.inSocialGroup else "Individual is alone"
         ax_info.text(0.5, 0.15, social_group, 
+                    fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
+        status = "Alive" if clicked_individual.alive else "Dead"
+        ax_info.text(0.5, -0.2, f"Status: {status}", 
                     fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
         ax_info.axis('off')
         
@@ -511,7 +566,7 @@ class Interface():
 
 
     def run_simulation(self):
-        # self.start_menu() uncomment to show main title window
+        # self.start_menu()
         self.start()
         plt.show()
 

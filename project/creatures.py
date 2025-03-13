@@ -737,11 +737,13 @@ class DeadCreature():
         self.coords = animal.getCoords()
         self.deadAnimal = animal
         self.deathDay = day
+        self.id = animal.id
+        self.old_species = animal.__class__.__name__
     
     def getDeathDay(self):
         return self.deathDay
     
-    def getCords(self) -> tuple[int]:
+    def getCoords(self) -> tuple[int]:
         return self.coords
     
     def __repr__(self):
