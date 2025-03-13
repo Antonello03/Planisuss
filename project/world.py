@@ -408,7 +408,7 @@ class Environment():
         for coords in cellHunters:
             if coords in cellHerds or coords in cellErbasts:
 
-                # retrieve the strongest erbast and the pride
+                # obtain the strongest erbast and the pride
                 if coords in cellHerds:
                     herd = cellHerds[coords][0]
                     strongestErbast = max(herd.getComponents(), key = lambda x : x.getEnergy())
@@ -430,17 +430,18 @@ class Environment():
                 erbastLuck = random.randint(1,3)
                 huntProbability = self._hunt_probability(erbastEnergy, hunterStrength) * erbastLuck
 
-                while attempts < 3:
+                while attempts < 3: # 3 assaults
 
                     if isinstance(hunter, Pride):
 
-                        if random.random() < huntProbability: # death
+                        if random.random() < huntProbability: # Pride wins
                             self.creatureDeath(strongestErbast)
                             logging.info(f"{strongestErbast} has been killed by {hunter}")
 
                             # energy sharing
                             individualShare = erbastEnergy // numPrideComponents
                             hunter.changeEnergy(individualShare)
+                            hunter.changeGroupSociality(0.1)
 
                             # the hungriest carviz gets the spare energy
                             spareEnergy = erbastEnergy % numPrideComponents
@@ -448,6 +449,7 @@ class Environment():
                             hungriestCarviz.changeEnergy(spareEnergy) 
                             break
                         else:
+                            hunter.changeGroupSociality(-0.04)
                             attempts += 1
                             anyAlive = any(self.changeEnergyAndHandleDeath(hunter, -2).values())
                             logging.info(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. any Alive?: {anyAlive}")
@@ -496,11 +498,13 @@ class Environment():
         grid = self.getGrid()
         cells = grid.reshape(-1)
         landCells = [landC for landC in cells if isinstance(landC,LandCell)]
-        # 3.1 - GROWING
+
+        # 3.1 - GROWING -----------------------------------------------------------------------------------------------
+
         for cell in landCells:
             cell.growVegetob()
 
-        # 3.2 - MOVEMENT
+        # 3.2 - MOVEMENT -----------------------------------------------------------------------------------------------
 
         logging.info("MOVEMENT PHASE\n")
 
@@ -522,7 +526,7 @@ class Environment():
 
                 aliveDict = self.changeEnergyAndHandleDeath(c, ENERGY_LOSS)
 
-                if sum(aliveDict.values()) < 2: # 0 or 1 alive
+                if sum(aliveDict.values()) < 2 and isinstance(c, SocialGroup): # 0 or 1 alive
                     logging.info(f"Of {c}, all except {sum(aliveDict.values())} are alive during movement due to starvation")
                     nextCoords.pop(c)
                 else:
@@ -535,12 +539,13 @@ class Environment():
         self.move(nextCoords)
 
 
-        # 3.3 - GRAZING
+        # 3.3 - GRAZING -----------------------------------------------------------------------------------------------
+
         stayingErbast = [e for e in stayingCreatures if isinstance(e, Erbast) or isinstance(e,Herd)]
         for e in stayingErbast:
             self.graze(e) #this includes cell vegetob reduction, herd and individual energy increase
 
-        # 3.4 - STRUGGLE
+        # 3.4 - STRUGGLE -----------------------------------------------------------------------------------------------
 
         # Erbasts are automatically merged in Herds from LandCell internal updates when trying to add them
 
@@ -559,17 +564,22 @@ class Environment():
             self.struggle()
             self.joinCarvizesToPride()
         
-        # 3.4 - HUNT
+        # 3.4 - HUNT -----------------------------------------------------------------------------------------------
 
         logging.info("HUNT PHASE\n")
 
         self.hunt()
 
-        # 3.5 - SPAWNING
+        # 3.5 - SPAWNING -----------------------------------------------------------------------------------------------
+
         for c in self.creatures["Erbast"] + self.creatures["Carviz"]:
-            alive = c.ageStep()
+            alive, offsprings = c.ageStep()
+            if offsprings:
+                for offspring in offsprings:
+                    self.add(offspring)
             if not alive:
                 self.creatureDeath(c)
+        
 
         # Log cells with Erbasts
         logging.info("LANDCELLS WITH ERBASTS\n")
