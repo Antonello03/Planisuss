@@ -1,2 +1,1 @@
-- spawning
-- totErbast is negative
+- add MAXHERD and MAXPRIDWE (after spawning we have to many mouths to satisfy! all will eventually die), alternatively, add a phase where low social attitude component leave the group

@@ -11,7 +11,6 @@ WORLD_CONFIGS = {
     "map3": {"seed": 10},
 }
 
-# Configure logging
 log_filename = f"run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 logging.basicConfig(
     filename="planisuss_events.log",  # Always logs to the same file
@@ -55,6 +54,35 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
         environment.add(carv1)
         environment.add(Carviz((26,26)))
 
+    if type == "test_offsprings":
+
+        erbs = [
+            Erbast((25,25)),
+            Erbast((25,25)),
+            Erbast((25,25)),
+            Erbast((28,28)),
+            Erbast((28,28)),
+            Erbast((30,30))
+        ]
+
+        carvs = [
+            Carviz((24, 24)),
+            Carviz((24, 24)),
+            Carviz((24, 24)),
+            Carviz((26, 26)),
+            Carviz((26, 26)),
+            Carviz((26, 26))
+        ]
+
+        for el in erbs:
+            environment.add(el)
+        for el in carvs:
+            environment.add(el)
+
+    if type == "one Erbast":
+        erb = Erbast((25,25))
+        environment.add(erb)
+
     if type == "random":
         for i in range(nErb):
             (x, y) = random.choice(land_cells)
@@ -68,15 +96,13 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
             carv = Carviz((x, y), SocialAttitude = random.random())
             environment.add(carv)
 
-# random.seed(1)
-# initializePopulation(environment, "random", 500, 100)
 def run_simulation(selected_map="map1"):
     if selected_map not in WORLD_CONFIGS:
         raise ValueError(f"Invalid map selection: {selected_map}.  Choose from {list(WORLD_CONFIGS.keys())}")
 
     config = WORLD_CONFIGS[selected_map]
     environment = Environment(seed=config["seed"])
-    initializePopulation(environment, "random", 50, 40)  # Initialize population after environment creation
+    initializePopulation(environment, "test_offsprings")  # Initialize population after environment creation
     animation = Interface(env=environment)
     animation.run_simulation()
 
