@@ -144,14 +144,14 @@ class Environment():
         x,y = group.getCoords()
 
         if isinstance(group, Herd):
+            self.totErbast += group.numComponents
             self.creatures["Erbast"].extend(group.getComponents())
             self.getGrid()[x][y].addGroup(group)
-            self.totErbast += group.numComponents
 
         if isinstance(group, Pride):
+            self.totCarviz += group.numComponents    
             self.creatures["Carviz"].extend(group.getComponents())
             self.getGrid()[x][y].addGroup(group)
-            self.totCarviz += group.numComponents    
 
     def remove(self, object:Species):
         if isinstance(object, Animal):
@@ -199,12 +199,16 @@ class Environment():
                 self.totErbast -= group.numComponents
                 self.creatures["Erbast"] = [erb for erb in self.creatures["Erbast"] if erb not in group.getComponents()]
                 self.getGrid()[x][y].removeHerd(group)
+            else:
+                raise Exception(f"not all components of {group} are in the creatures list")
 
         elif isinstance(group, Pride):
             if all(el in self.creatures["Carviz"] for el in group.getComponents()):
                 self.totCarviz -= group.numComponents
                 self.creatures["Carviz"] = [carv for carv in self.creatures["Carviz"] if carv not in group.getComponents()]
                 self.getGrid()[x][y].removePride(group)
+            else:
+                raise Exception(f"not all components of {group} are in the creatures list")
 
     def move(self, nextCoords: dict[Species, tuple]):
         """
@@ -480,12 +484,14 @@ class Environment():
         self.day += 1
 
         logging.info(f"DAY {self.day}\n")
-        logging.info(f"totErbast: {self.totErbast}")
-        logging.info(f"totCarviz: {self.totCarviz}")
         logging.info(f"creatures: {self.creatures}")
         logging.info(f"deadCreatures: {self.deadCreatures}")
         logging.info(f"herds: {self.getHerds()}")
         logging.info(f"prides: {self.getPrides()}\n")
+        logging.info(f"totErbast: {self.totErbast}")
+        logging.info(f"totCarviz: {self.totCarviz}")
+        logging.info(f"len Creatures Erbasts: {len(self.creatures['Erbast'])}")
+        logging.info(f"len Creatures Carviz: {len(self.creatures['Carviz'])}")
 
         grid = self.getGrid()
         cells = grid.reshape(-1)
