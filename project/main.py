@@ -5,8 +5,11 @@ from interface import Interface
 from world import Environment
 from creatures import Erbast, Carviz, Herd, Pride
 
-environment = Environment()
-animation = Interface(env = environment)
+WORLD_CONFIGS = {
+    "map1": {"seed": 1},
+    "map2": {"seed": 5},
+    "map3": {"seed": 10},
+}
 
 log_filename = f"run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 logging.basicConfig(
@@ -93,6 +96,15 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
             carv = Carviz((x, y), SocialAttitude = random.random())
             environment.add(carv)
 
-initializePopulation(environment, "random", nErb = 100, nCarv = 50)
+def run_simulation(selected_map="map1"):
+    if selected_map not in WORLD_CONFIGS:
+        raise ValueError(f"Invalid map selection: {selected_map}.  Choose from {list(WORLD_CONFIGS.keys())}")
 
-animation.run_simulation()
+    config = WORLD_CONFIGS[selected_map]
+    environment = Environment(seed=config["seed"])
+    initializePopulation(environment, "test_offsprings")  # Initialize population after environment creation
+    animation = Interface(env=environment)
+    animation.run_simulation()
+
+if __name__ == "__main__":
+    run_simulation("map1")

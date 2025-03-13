@@ -87,7 +87,7 @@ class Species():
         y_max = min(NUMCELLS_C, y + d + 1)
         cands = worldGrid[x_min:x_max, y_min:y_max].reshape(-1)
 
-        logging.info(f"{self}, in position {self.getCoords()}, with neighborhood distance {d} was looking for its neighborhood, i returned {cands}")
+        logging.debug(f"{self}, in position {self.getCoords()}, with neighborhood distance {d} was looking for its neighborhood, i returned {cands}")
 
         # print(f"{self} was looking for its neighborhood, i returned {cands}, with neighborhood {d}")
         # cands = np.delete(cands,len(cands)//2)
@@ -889,6 +889,8 @@ class DeadCreature():
         self.coords = animal.getCoords()
         self.deadAnimal = animal
         self.deathDay = day
+        self.id = animal.id
+        self.old_species = animal.__class__.__name__
     
     def getDeathDay(self):
         return self.deathDay

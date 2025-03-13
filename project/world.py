@@ -15,14 +15,14 @@ import pprint
 ON = 255
 OFF = 0
 
-class Environment():
+class Environment:
     """
     The Environment class is the core of Planisuss world.
     Each living being and the worldGrid itself is contained here and the inizialization
     and update logic of the world is managed by the following functions
     """
-    def __init__(self):
-        self.world = WorldGrid()
+    def __init__(self, seed=None):
+        self.world = WorldGrid(seed=seed)
         self.creatures = {
             "Erbast" : [],
             "Carviz" : []
@@ -643,17 +643,19 @@ class WorldGrid():
                 
         return grid
 
-    def __init__(self, type = "fbm", threshold = 0.2):
-        self.grid = self.createWorld(type, threshold)
+    def __init__(self, type = "fbm", threshold = 0.2, seed=None):
+        self.grid = self.createWorld(type, threshold, seed)
     # so that we can crate different types of initial setups
-    def createWorld(self, typology = "fbm", threshold = 0.2) -> np.ndarray:
+    def createWorld(self, typology = "fbm", threshold = 0.2, seed=None):
         """
         Initialize the world
         Vegetob density starts at around 25
         """
+        if seed:
+            random.seed(seed)
         
         if typology == "fbm":
-            values_grid = self.__fbmNoise(NUMCELLS, threshold, seed=None, dynamic=True)
+            values_grid = self.__fbmNoise(NUMCELLS, threshold, seed=seed, dynamic=True)
             grid = np.zeros((NUMCELLS, NUMCELLS), dtype=object)
             for i in range(NUMCELLS):
                 for j in range(NUMCELLS):
