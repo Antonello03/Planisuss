@@ -11,7 +11,14 @@ from scipy.ndimage import gaussian_filter
 from creatures import *
 import random
 from matplotlib.gridspec import GridSpec
+import logging
+import traceback
 
+logging.basicConfig(level=logging.DEBUG, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    filename='animation_debug.log',
+                    filemode='w')
+logger = logging.getLogger('Interface')
 
 class Interface():
 
@@ -50,7 +57,8 @@ class Interface():
         self.img = None
         self.currentDay = 0
         self.maxDay = NUMDAYS
-        self.animal_artists_map = {}
+        self.alive_animal_artists = {}  
+        self.dead_animal_artists = {}   
         self.vegetob_artists = []
         self.processed_dead_animals = set()
         self.info_box = None
@@ -73,7 +81,7 @@ class Interface():
         ax_map3 = fig_menu.add_subplot(gs_menu[1, 2])
         
         fig_menu.canvas.mpl_connect('button_press_event', lambda event: self.choose_map(fig_menu, event))
-        fig_menu.show()
+        # fig_menu.show()
     
     def choose_map(self, fig_menu, event):
         if event.inaxes not in fig_menu.get_axes(): return
@@ -136,21 +144,27 @@ class Interface():
         self.currentDay = frameNum
         
         if self.currentDay >= self.maxDay:
+            logger.info("Reached max days, stopping animation")
             self.ani.event_source.stop()
             return [img]
         
+        logger.debug("Advancing simulation day")
         self.env.nextDay()
+
         img = self.ax_plot.imshow(self.grid, interpolation='nearest')
         print(f"{frameNum} and {self.currentDay}")
         self.day_text.set_text(f"Day: {self.currentDay}")
-        
+    
         for artist in self.vegetob_artists:
             artist.remove()
         self.vegetob_artists.clear()
 
+        logger.debug("Drawing new elements")
         self.draw_elements(self.grid)
+
+        logger.debug(f"Frame {frameNum} complete, returning {2 + len(self.alive_animal_artists) + len(self.vegetob_artists)} artists")
         
-        return [img, self.day_text] + list(self.animal_artists_map.values()) + self.vegetob_artists
+        return [img, self.day_text] + list(self.alive_animal_artists.values()) + list(self.dead_animal_artists.values()) + self.vegetob_artists
     
     def draw_elements(self, grid):
         for i in range(grid.shape[0]):
@@ -163,63 +177,64 @@ class Interface():
     def draw_animals_in_cell(self, cell):
         erbast_list = cell.getErbastList()
         carviz_list = cell.getCarvizList()
-        dead_list = cell.getDeadCreaturesList()
-
-        already_seen = set()
+        dead_list = [dead.deadAnimal for dead in cell.getDeadCreaturesList()]
         
+        # First, clear any alive animals that are now dead
+        for dead in dead_list:
+            if dead in self.alive_animal_artists:
+                artist = self.alive_animal_artists[dead]
+                artist.remove()
+                del self.alive_animal_artists[dead]
+    
+        # Draw living animals
         for animal in erbast_list + carviz_list:
-            already_seen.add(animal)
-            redraw = animal in dead_list
-            self.draw_animal(animal, redraw=redraw)
-
-        if dead_list:
-            print("There are dead animals")
-            print(len(dead_list))
-            for dead in dead_list:
-                if dead not in already_seen and dead not in self.processed_dead_animals:
-                    self.draw_animal(dead, redraw=True)
-                    self.processed_dead_animals.add(dead)
-
-    def draw_animal(self, animal, redraw=False):
+            if animal not in dead_list:
+                logger.debug(f"Drawing living animal {animal} as Circle")
+                self.draw_living_animal(animal)
         
+        # Draw dead animals that haven't been processed yet
+        for dead in dead_list:
+            if dead not in self.dead_animal_artists and dead not in self.processed_dead_animals:
+                logger.debug(f"Drawing dead animal {dead} as Rectangle")
+                self.draw_dead_animal(dead)
+
+    def draw_living_animal(self, animal):
         shift_x, shift_y = np.random.uniform(-0.3, 0.3, 2)
-        x, y = animal.getCoords()        
-
-        if animal in self.animal_artists_map:
-            current_artist = self.animal_artists_map[animal]
-            if redraw:
-                print(f"animal is now dead")
-                current_artist.remove()
-                del self.animal_artists_map[animal]
-                print(animal)
-                color = [192 / 255, 192 / 255, 192 / 255]
-                new_artist = Rectangle(xy=(y + shift_y, x + shift_x), width=0.2, height=0.2, color=color, fill=True, alpha=1)
-                self.ax_plot.add_artist(new_artist)
-                self.animal_artists_map[animal] = new_artist
-                self.processed_dead_animals.add(animal)  # Mark as processed
-            else:
-                if isinstance(current_artist, Circle):
-                    current_artist.center = (y + shift_y, x + shift_x)
-                return current_artist    
-        else:
-            print("Animal not in map")
-            if redraw:
-                print(f"animal is dead and was not in map")
-                print(animal)
-                color = [192 / 255, 192 / 255, 192 / 255]
-                new_artist = Rectangle(xy=(y + shift_y, x + shift_x), width=0.2, height=0.2, color=color, fill=True, alpha=1)
-                self.ax_plot.add_artist(new_artist)
-                self.animal_artists_map[animal] = new_artist
-                self.processed_dead_animals.add(animal)  # Mark as processed
-            else:
-                if isinstance(animal, Erbast):
-                    color = [216 / 255, 158 / 255, 146 / 255]
-                else:
-                    color = [139 / 255, 0 / 255, 0 / 255]
-                new_artist = Circle((y + shift_y, x + shift_x), radius=0.1, color=color, alpha=1)
-                self.animal_artists_map[animal] = new_artist
-                self.ax_plot.add_artist(new_artist)        
+        x, y = animal.getCoords()
         
+        if animal in self.alive_animal_artists:
+            logger.debug(f"Updating position of existing living animal {animal}")
+            # update position
+            current_artist = self.alive_animal_artists[animal]
+            current_artist.center = (y + shift_y, x + shift_x)
+        else:
+            logger.debug(f"Creating new artist for living animal {animal}")
+            if isinstance(animal, Erbast):
+                color = [216 / 255, 158 / 255, 146 / 255]
+            else:
+                color = [139 / 255, 0 / 255, 0 / 255]
+            
+            new_artist = Circle((y + shift_y, x + shift_x), radius=0.1, color=color, alpha=1)
+            self.ax_plot.add_artist(new_artist)
+            self.alive_animal_artists[animal] = new_artist
+        
+    def draw_dead_animal(self, animal):
+        logger.debug(f"Drawing dead animal {animal} as Rectangle")
+        shift_x, shift_y = np.random.uniform(-0.3, 0.3, 2)
+        x, y = animal.getCoords()
+        
+        if isinstance(animal, Carviz):
+            color = [253 / 255, 174 / 255, 69 / 255]
+        else:
+            color = [240 / 255, 255 / 255, 240 / 255]
+        new_artist = Rectangle(xy=(y + shift_y, x + shift_x), 
+                            width=0.2, height=0.2, 
+                            color=color, fill=True, alpha=1)
+        
+        self.ax_plot.add_artist(new_artist)
+        self.dead_animal_artists[animal] = new_artist
+        self.processed_dead_animals.add(animal)
+
     def draw_vegetob(self, cell, i, j):
         cell_density = cell.getVegetobDensity()
         # print(f"cell density: {cell_density}")          
@@ -228,6 +243,24 @@ class Interface():
         rectangle = plt.Rectangle((j - 0.5, i - 0.5), 1, 1, color=color_vegetob, alpha=0.4)
         self.ax_plot.add_artist(rectangle)
         self.vegetob_artists.append(rectangle)
+    
+    def _log_artist_map_state(self):
+        """Log the current state of the animal_artists_map dictionary for debugging."""
+        logger.debug(f"Current animal_artists_map contains {len(self.animal_artists_map)} entries")
+        
+        circle_count = 0
+        rectangle_count = 0
+        other_count = 0
+        
+        for animal, artist in self.animal_artists_map.items():
+            if isinstance(artist, Circle):
+                circle_count += 1
+            elif isinstance(artist, Rectangle):
+                rectangle_count += 1
+            else:
+                other_count += 1
+        
+        logger.debug(f"Artists by type: {circle_count} Circles, {rectangle_count} Rectangles, {other_count} other")
         
     def onclick(self, event):
         if event.inaxes not in [self.ax_pause, self.ax_play, self.ax_x2, self.ax_plot]: return
@@ -313,15 +346,14 @@ class Interface():
     def display_initial_setup(self):
         initial_grid = self.grid
 
-        for artist in self.animal_artists_map.values():
+        for artist in self.alive_animal_artists.values():
             artist.remove()
         
-        self.animal_artists_map.clear()
+        self.alive_animal_artists.clear()
         # self.animal_artists.clear()
 
-        self.draw_elements(initial_grid)
-
         self.img = self.ax_plot.imshow(initial_grid, interpolation='nearest')
+        self.draw_elements(initial_grid)
         self.day_text.set_text(f'Day 0')
         # plt.pause(0.1)
         return self.img

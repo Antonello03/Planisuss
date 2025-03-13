@@ -69,14 +69,14 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
             environment.add(carv)
 
 # random.seed(1)
-initializePopulation(environment, "random", 500, 100)
+# initializePopulation(environment, "random", 500, 100)
 def run_simulation(selected_map="map1"):
     if selected_map not in WORLD_CONFIGS:
         raise ValueError(f"Invalid map selection: {selected_map}.  Choose from {list(WORLD_CONFIGS.keys())}")
 
     config = WORLD_CONFIGS[selected_map]
     environment = Environment(seed=config["seed"])
-    initializePopulation(environment, "test1")  # Initialize population after environment creation
+    initializePopulation(environment, "random", 50, 40)  # Initialize population after environment creation
     animation = Interface(env=environment)
     animation.run_simulation()
 
