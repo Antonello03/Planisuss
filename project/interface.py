@@ -24,8 +24,8 @@ logger = logging.getLogger('Interface')
 
 log_filename = f"run_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 logging.basicConfig(
-    filename="planisuss_events.log",  # Always logs to the same file
-    filemode="w",        # "w" overwrites the file on each run
+    filename="planisuss_events.log",
+    filemode="w",        
     level=logging.INFO,
     format="%(levelname)s - %(message)s",
 )
@@ -34,7 +34,6 @@ class Interface():
 
     """
     Class that handles the visualization of the interface
-    Maybe we can put even the following in a class?
     """
     IMAGE_PATHS = {
         'SOCIAL_ATT': {
@@ -46,9 +45,15 @@ class Interface():
             'LOW': "files//energy1.png",
             'MEDIUM': "files//energy2.png",
             'HIGH': "files//energy3.png"
+        },
+        'CELL': {
+            'DIRT' : "files//dirt.png",
+            'GRASS_LOW' : "files//grass_low.png",
+            'GRASS_MED' : "files//grass_med.png",
+            'GRASS_HIGH' : "files//grass_high.png"
         }
     }
-    COLORS = (234/255, 222/255, 204/255, 0.7)
+    COLORS = (5/255, 8/255, 10/255, 0.7)
 
     WORLD_CONFIGS = {
     "map1": {"seed": 1},
@@ -90,15 +95,20 @@ class Interface():
         plt.show(block=True)
 
     def start_menu(self):
-        self.fig_menu = plt.figure(figsize=(8,8))
+        self.fig_menu = plt.figure(figsize=(8,8), dpi=100)
         self.fig_menu.set_facecolor(self.COLORS)
+        
+        background_ax = self.fig_menu.add_axes([0, 0, 1, 1])
+        background_img = Image.open("files//background.jpg")
+        background_ax.imshow(background_img, aspect='auto', extent=(0, 1, 0, 1), alpha=0.5)
+        
         gs_menu = GridSpec(2, 3, figure=self.fig_menu, height_ratios=[5.5, 3], 
                     width_ratios=[1.5, 1.5, 1.5], 
                     left=0.1, right=0.9, top=0.95, bottom=0.1, 
                     wspace=0.05, hspace=0.5)
         
         ax_title = self.fig_menu.add_subplot(gs_menu[0, :])
-        logo_img = Image.open("files//planisuss_logo.jpg")
+        logo_img = Image.open("files//planisuss_logo.png")
         ax_title.imshow(logo_img)
         
         ax_title.set_title("Choose a map to start the simulation", loc='center', fontweight='bold')
@@ -125,7 +135,7 @@ class Interface():
     def choose_map(self, fig_menu, event):
         if event.inaxes not in fig_menu.get_axes(): return
 
-        title, map1, map2, map3 = list(fig_menu.get_axes())
+        _, title, map1, map2, map3 = list(fig_menu.get_axes())
         
         if event.inaxes == title:
                 print('Title clicked')
@@ -242,18 +252,19 @@ class Interface():
 
     def create_fig_map(self):
         if self._fig_map is None:
-            self._fig_map = plt.figure(figsize=(7, 7))
+            self._fig_map = plt.figure(figsize=(10, 10), dpi=100)
             self._fig_map.set_facecolor(self.COLORS)
-            self.gs_map = GridSpec(2, 2, height_ratios=[6, 1], width_ratios=[6, 1], figure=self._fig_map)
+            self.gs_map = GridSpec(2, 2, height_ratios=[5, 1], width_ratios=[5, 1], figure=self._fig_map)
             
             self.ax_plot = self._fig_map.add_subplot(self.gs_map[0, 0])
             self.ax_plot.set_aspect('equal', adjustable='box')
             self.ax_plot.axis('off')
             self.welcome_plot = self._fig_map.add_subplot(self.gs_map[0, 1])
-            self.welcome_plot.text(-0.1, 0.5, f'Click on any cell to know more information', va='center')
+            self.welcome_plot.text(0.5, 0.5, 
+                                   f'Click on any cell\nto know more information', va='center', ha='center')
             self.welcome_plot.axis('off')
-            self._fig_map.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, wspace=0.3, hspace=0.2)
-            self._fig_map.tight_layout(pad=1.0)
+            self._fig_map.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.08, wspace=0.01, hspace=0.05)
+            # self._fig_map.tight_layout(pad=1.0)
             self._fig_map.canvas.manager.set_window_title("Planisuss World")
             self.setup_controls()
         return self._fig_map
@@ -531,13 +542,23 @@ class Interface():
 
     def show_cell_info(self, x, y):
         cell = self.env.getGrid()[x, y]
+        cell_density = cell.getVegetobDensity()
+        if cell_density < 25:
+            img_cell = Image.open(self.IMAGE_PATHS['CELL']['DIRT'])
+        elif 25 < cell_density < 50:
+            img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_LOW'])
+        elif 50 < cell_density < 100:
+            img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_MED'])
+        else:
+            img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_HIGH'])
+        
         fig = plt.figure(figsize=(5,5))
         gs = GridSpec(2, 2, height_ratios=[3, 1], figure=fig)
         ax_img = fig.add_subplot(gs[0, 0])
-        test2 = Image.open("files//carvizN.jpg")
+        
         # ax = ShowCard.remove_text(self.ax[1])
         extent = [0, 0.5, 0.5, 1]
-        ax_img.imshow(test2, extent=extent)
+        ax_img.imshow(img_cell, extent=extent)
         ax_img.text(0.01, 0.45, f"Cell's coordinates: {x}, {y}", ha='left')
         ax_img.text(0.01, 0.35, f"Cell's vegetob density: {cell.getVegetobDensity()}")
         ax_img.axis('off')
