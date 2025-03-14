@@ -16,7 +16,7 @@ import traceback
 from datetime import datetime
 import os
 
-logging.basicConfig(level=logging.DEBUG, 
+logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     filename='animation_debug.log',
                     filemode='w')
@@ -159,7 +159,7 @@ class Interface():
         environment = Environment(seed=seed)
         self.env = environment
         self.grid = self.gridToRGB(environment.getGrid(), save=True, seed=seed)
-        self.initialize_population(environment, type="random", nErb=10, nCarv=10)
+        self.initialize_population(environment, type="random", nErb=100, nCarv=100)
         self.create_map_and_start()
 
     def initialize_population(self, environment, type:str = "test1", nErb = 10, nCarv = 10):
@@ -168,14 +168,14 @@ class Interface():
                     if environment.isLand(x, y)]
 
         if type == "test1":
-            erb1 = Erbast((25,25), energy=100, name="schiavo 1")
-            erb2 = Erbast((25,25), energy=5, name="schiavo 2")
-            erb3 = Erbast((25,25), energy=5, name="schiavo 3")
+            erb1 = Erbast((25,25), energy=100, name="erb 1")
+            erb2 = Erbast((25,25), energy=5, name="erb 2")
+            erb3 = Erbast((25,25), energy=5, name="erb 3")
             herd1 = Herd([erb1,erb2,erb3])
             environment.add(herd1)
 
-            erbOther = Erbast((24,25), energy=100, name="schiavo 4")
-            erbOther2 = Erbast((24,25), energy=5, name = "schiavo 5")
+            erbOther = Erbast((24,25), energy=100, name="carv 4")
+            erbOther2 = Erbast((24,25), energy=5, name = "carv 5")
             herd2 = Herd([erbOther, erbOther2])
             environment.add(herd2)
 
