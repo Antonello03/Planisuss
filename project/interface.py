@@ -53,7 +53,7 @@ class Interface():
             'GRASS_HIGH' : "files//grass_high.png"
         }
     }
-    COLORS = (5/255, 8/255, 10/255, 0.7)
+    COLORS = (0/255, 50/255, 0/255, 0.7)
 
     WORLD_CONFIGS = {
     "map1": {"seed": 1},
