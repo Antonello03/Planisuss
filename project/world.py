@@ -437,7 +437,7 @@ class Environment:
                             logging.info(f"{strongestErbast} has been killed by {hunter}")
 
                             # energy sharing
-                            individualShare = erbastEnergy // numPrideComponents
+                            individualShare = (erbastEnergy // numPrideComponents) + 5
                             hunter.changeEnergy(individualShare)
                             hunter.changeGroupSociality(0.1)
 

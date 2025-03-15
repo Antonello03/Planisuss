@@ -46,7 +46,7 @@ ENERGY_LOSS_C = -1    # Energy lost by moving each day for Carviz
 
 MAX_LIFE = 10  # maximum value of Lifetime
 MAX_LIFE_E = 10  # maximum value of Lifetime for Erbast
-MAX_LIFE_C = 15   # maximum value of Lifetime for Carviz
+MAX_LIFE_C = 10   # maximum value of Lifetime for Carviz
 
 MONTH = 5            # number of days in a month
 
