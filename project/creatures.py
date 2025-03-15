@@ -289,20 +289,28 @@ class Erbast(Animal):
 
                  # Other Erbast evaluation --------------------------------
 
-                #smaller group will join the bigger one
-                if presentCell.numErbast < cell.numErbast: 
-                    desirabilityScores[cell] += cell.numErbast * self.socialAttitude
+                individualTolerance = self.socialAttitude * 10 + random.randint(0,2) # tolerance for the maximum number of erbasts (too many won't be able to share resources)
 
-                # if we are the same number we can join or stay still by random choice
-                elif presentCell.numErbast == cell.numErbast:
-                    if random.random() > 0.5:
-                        desirabilityScores[cell] += cell.numErbast * self.socialAttitude
-                    else:
+                ourErbasts = presentCell.numErbast
+                theirErbasts = cell.numErbast
+                sumErbasts = presentCell.numErbast + cell.numErbast
+
+                if sumErbasts <= individualTolerance:
+
+                    #smaller group will join the bigger one
+                    if ourErbasts < theirErbasts: 
+                        desirabilityScores[cell] += theirErbasts * self.socialAttitude
+
+                    # if we are the same number we can join or stay still by random choice
+                    elif ourErbasts == theirErbasts:
+                        if random.random() > 0.5:
+                            desirabilityScores[cell] += theirErbasts * self.socialAttitude
+                        else:
+                            desirabilityScores[presentCell] += theirErbasts * self.socialAttitude
+
+                    #if they are not more than us, we stil want to join so we stay still
+                    elif theirErbasts > 0:
                         desirabilityScores[presentCell] += cell.numErbast * self.socialAttitude
-
-                #if they are not more than us, we stil want to join so we stay still
-                elif cell.numErbast > 0:
-                    desirabilityScores[presentCell] += cell.numErbast * self.socialAttitude
 
                 # Vegetob evaluation --------------------------------
 
@@ -405,17 +413,30 @@ class Carviz(Animal):
 
             desirabilityScores[cell] += cell.getVegetobDensity() * Carviz.VEG_NEED
             
-            #do we want to meet other carvizes?
-            if presentCell != cell:
-                if presentCell.numCarviz < cell.numCarviz:
-                    desirabilityScores[cell] += cell.numCarviz * (self.socialAttitude - 0.5) # A carviz might want to stay alone
-                elif presentCell.numCarviz == cell.numCarviz: # if we are the same number we can join or stay still by random choice
+            # other carvizes evaluation --------------------------------
+
+            individualTolerance = self.socialAttitude * 8 + random.randint(0,2) # tolerance for the maximum number of carvizes (too many won't be able to share resources)
+
+            ourCarvizes = presentCell.numCarviz
+            theirCarvizes = cell.numCarviz
+            sumCarvizes = presentCell.numCarviz + cell.numCarviz
+
+            if sumCarvizes <= individualTolerance:
+
+                #smaller group will join the bigger one
+                if ourCarvizes < theirCarvizes: 
+                    desirabilityScores[cell] += theirCarvizes * self.socialAttitude
+
+                # if we are the same number we can join or stay still by random choice
+                elif ourCarvizes == theirCarvizes:
                     if random.random() > 0.5:
-                        desirabilityScores[cell] += cell.numCarviz * self.socialAttitude
+                        desirabilityScores[cell] += theirCarvizes * self.socialAttitude
                     else:
-                        desirabilityScores[presentCell] += cell.numCarviz * self.socialAttitude
-                elif cell.numCarviz > 0:
-                    desirabilityScores[presentCell] += cell.numCarviz * (self.socialAttitude - 0.5)
+                        desirabilityScores[presentCell] += theirCarvizes * self.socialAttitude
+
+                #if they are not more than us, we stil want to join so we stay still
+                elif theirCarvizes > 0:
+                    desirabilityScores[presentCell] += theirCarvizes * self.socialAttitude
 
         # Staying likability evaluation - carviz are very unlikely to stay still, they're constantly looking for Erbasts
         desirabilityScores[presentCell] -= round(((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT),2) #when the energy is low a prey must be found
@@ -591,7 +612,17 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
             if groupdecidedCoords not in individualValues.keys():
                 logging.error(f"Individual {c} in {c.getCoords()} neighborhood is {individualValues.keys()}")
 
-            if individualValues[groupdecidedCoords] < -c.socialAttitude: #if individual preference is lower than the negative social attitude for the group choice
+            individualDesiredValue = individualValues[groupdecidedCoords]
+            individualTolerance = c.socialAttitude * 5 + random.randint(0,10) # how many other components is the individual able to tolerate
+            
+            # if there are too many individuals in the same cell they will probably die due to lack of resources
+            tooManyIndividualsPenalty = 0
+            if self.numComponents > individualTolerance:
+                tooManyIndividualsPenalty = 6 * (1 - c.socialAttitude)
+            
+            maximumTolerance = (tooManyIndividualsPenalty - c.socialAttitude)
+
+            if individualDesiredValue < maximumTolerance: #if individual preference is lower than maximum tolerance
                 individualDecidedCoords = max(individualValues, key=individualValues.get)
                 if groupdecidedCoords != individualDecidedCoords: #and the individual choice is different from the group choice
                     leavingIndividualsAndDirection[c] = individualDecidedCoords # get individual preferred movement
@@ -688,15 +719,28 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
                 # Other Erbast evaluation --------------------------------
 
-                if presentCell.numErbast < cell.numErbast:
-                    desirabilityScores[cell] += cell.numErbast * groupSociality
-                elif presentCell.numErbast == cell.numErbast:
-                    if random.random() > 0.5:
-                        desirabilityScores[cell] += cell.numErbast * groupSociality
-                    else:
+                individualTolerance = groupSociality * 10 + random.randint(0,2) # tolerance for the maximum number of erbasts (too many won't be able to share resources)
+
+                ourErbasts = presentCell.numErbast
+                theirErbasts = cell.numErbast
+                sumErbasts = presentCell.numErbast + cell.numErbast
+
+                if sumErbasts <= individualTolerance:
+
+                    #smaller group will join the bigger one
+                    if ourErbasts < theirErbasts: 
+                        desirabilityScores[cell] += theirErbasts * groupSociality
+
+                    # if we are the same number we can join or stay still by random choice
+                    elif ourErbasts == theirErbasts:
+                        if random.random() > 0.5:
+                            desirabilityScores[cell] += theirErbasts * groupSociality
+                        else:
+                            desirabilityScores[presentCell] += theirErbasts * groupSociality
+
+                    #if they are not more than us, we stil want to join so we stay still
+                    elif theirErbasts > 0:
                         desirabilityScores[presentCell] += cell.numErbast * groupSociality
-                elif cell.numErbast > 0:
-                    desirabilityScores[presentCell] += cell.numErbast * groupSociality
 
                 # Vegetob evaluation --------------------------------
 
@@ -864,12 +908,30 @@ class Pride(SocialGroup):
             desirabilityScores[cell] += cell.getVegetobDensity() * Carviz.VEG_NEED
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
-            #do we want to meet other carvizes?
-            if presentCell != cell:
-                if presentCell.numCarviz < cell.numCarviz:
-                    desirabilityScores[cell] += cell.numCarviz * (self.getGroupSociality() - 0.5) # A Pride might want to stay alone
-                elif cell.numCarviz > 0:
-                    desirabilityScores[presentCell] += cell.numCarviz * (self.getGroupSociality() - 0.5)
+            # other carvizes evaluation --------------------------------
+
+            individualTolerance = groupSociality * 8 + random.randint(0,2) # tolerance for the maximum number of carvizes (too many won't be able to share resources)
+
+            ourCarvizes = presentCell.numCarviz
+            theirCarvizes = cell.numCarviz
+            sumCarvizes = presentCell.numCarviz + cell.numCarviz
+
+            if sumCarvizes <= individualTolerance:
+
+                #smaller group will join the bigger one
+                if ourCarvizes < theirCarvizes: 
+                    desirabilityScores[cell] += theirCarvizes * groupSociality
+
+                # if we are the same number we can join or stay still by random choice
+                elif ourCarvizes == theirCarvizes:
+                    if random.random() > 0.5:
+                        desirabilityScores[cell] += theirCarvizes * groupSociality
+                    else:
+                        desirabilityScores[presentCell] += theirCarvizes * groupSociality
+
+                #if they are not more than us, we stil want to join so we stay still
+                elif theirCarvizes > 0:
+                    desirabilityScores[presentCell] += theirCarvizes * groupSociality
 
         desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells
         
