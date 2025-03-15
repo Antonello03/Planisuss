@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
@@ -47,18 +48,30 @@ class Interface():
             'HIGH': "files//energy3.png"
         },
         'CELL': {
+            'WATER': "files//water.png", 
             'DIRT' : "files//dirt.png",
             'GRASS_LOW' : "files//grass_low.png",
             'GRASS_MED' : "files//grass_med.png",
             'GRASS_HIGH' : "files//grass_high.png"
         }
     }
-    COLORS = (5/255, 8/255, 10/255, 0.7)
+    COLORS = (6/255, 32/255, 33/255, 0.8)
+    FONT_COLOR = (234/255, 222/255, 204/255)
+    AXES_COLOR = (147/255, 91/255, 78/255)
+    mpl.rcParams['figure.facecolor'] = COLORS
+    mpl.rcParams['axes.facecolor'] = AXES_COLOR
+    mpl.rcParams['text.color'] = FONT_COLOR
+    mpl.rcParams['axes.edgecolor'] = AXES_COLOR
+    mpl.rcParams['font.family'] = 'Comic Sans MS'
+    mpl.rcParams['font.size'] = 11
+    mpl.rcParams['font.weight'] = 'bold'
+    mpl.rcParams['axes.titlesize'] = 16
+
 
     WORLD_CONFIGS = {
     "map1": {"seed": 1},
-    "map2": {"seed": 15},
-    "map3": {"seed": 44}
+    "map2": {"seed": 32},
+    "map3": {"seed": 24}
     }
 
     MAP_PATHS = "files//maps"
@@ -91,11 +104,18 @@ class Interface():
         self.generation_type = "random"
         self.numErb = 50
         self.numCarv = 50
+        self.tomb_show = True
+        self.old_tombs = set()
+        self.button_pressed_play = False
+        self.button_pressed_pause = False
 
     def run_simulation(self):
         plt.ion() 
         self.start_menu()
         plt.show(block=True)
+        # for seed in range(1, 50):
+        #     self.set_environment(seed)
+            
 
     def start_menu(self):
         self.fig_menu = plt.figure(figsize=(8,8), dpi=100)
@@ -114,21 +134,24 @@ class Interface():
         logo_img = Image.open("files//planisuss_logo.png")
         ax_title.imshow(logo_img)
         
-        ax_title.set_title("Choose a map to start the simulation", loc='center', fontweight='bold')
+        ax_title.set_title("Choose a map to start the simulation", loc='center', fontweight='bold',
+                           color=[253/255, 253/255, 198/255])
         ax_title.axis('off')
 
         ax_map1 = self.fig_menu.add_subplot(gs_menu[1, 0])
         ax_map2 = self.fig_menu.add_subplot(gs_menu[1, 1])
         ax_map3 = self.fig_menu.add_subplot(gs_menu[1, 2])
 
-        ax_map1.set_title("Map 1")
+        ax_map1.set_title("Map 1", fontweight='bold',  color=[253/255, 253/255, 198/255])
         ax_map1.imshow(Image.open(f"{self.MAP_PATHS}//map_seed_{self.WORLD_CONFIGS['map1']['seed']}.png"))
         ax_map1.axis('off')
 
-        ax_map2.set_title("Map 2")
+        ax_map2.set_title("Map 2", fontweight='bold',  color=[253/255, 253/255, 198/255])
+        ax_map2.imshow(Image.open(f"{self.MAP_PATHS}//map_seed_{self.WORLD_CONFIGS['map2']['seed']}.png"))
         ax_map2.axis('off')
 
-        ax_map3.set_title("Map 3")
+        ax_map3.set_title("Map 3", fontweight='bold',  color=[253/255, 253/255, 198/255])
+        ax_map3.imshow(Image.open(f"{self.MAP_PATHS}//map_seed_{self.WORLD_CONFIGS['map3']['seed']}.png"))
         ax_map3.axis('off')
 
         self.fig_menu.canvas.mpl_connect('button_press_event', lambda event: self.choose_map(self.fig_menu, event))
@@ -247,6 +270,8 @@ class Interface():
         plt.close(self.fig_menu)
 
         self._fig_map = self.create_fig_map()
+        # manager = plt.get_current_fig_manager()
+        # manager.window.state('zoomed')
         self._fig_map.canvas.mpl_connect('button_press_event', self.onclick)
         self.day_text = self.ax_plot.text(0.02, 0.95, f'Day 0', 
                                       bbox={'facecolor':'w', 'alpha':0.5}, 
@@ -258,16 +283,17 @@ class Interface():
         if self._fig_map is None:
             self._fig_map = plt.figure(figsize=(10, 10), dpi=100)
             self._fig_map.set_facecolor(self.COLORS)
-            self.gs_map = GridSpec(2, 2, height_ratios=[5, 1], width_ratios=[5, 1], figure=self._fig_map)
+            self.gs_map = GridSpec(2, 2, height_ratios=[5, 1], width_ratios=[6, 1], figure=self._fig_map)
             
             self.ax_plot = self._fig_map.add_subplot(self.gs_map[0, 0])
-            self.ax_plot.set_aspect('equal', adjustable='box')
+            # self.ax_plot.set_aspect('auto', adjustable='box')
             self.ax_plot.axis('off')
             self.welcome_plot = self._fig_map.add_subplot(self.gs_map[0, 1])
-            self.welcome_plot.text(0.5, 0.5, 
-                                   f'Click on any cell\nto know more information', va='center', ha='center')
+            self.welcome_plot.text(-1.0, 0.5, 
+                                   f'Click on any cell\nto know more information', va='center', ha='center',
+                                   fontdict={'fontsize': 12, 'fontweight': 'bold', 'color': [234/255, 222/255, 204/255]})
             self.welcome_plot.axis('off')
-            self._fig_map.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.08, wspace=0.01, hspace=0.05)
+            self._fig_map.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.08, wspace=0.5, hspace=0.05)
             # self._fig_map.tight_layout(pad=1.0)
             self._fig_map.canvas.manager.set_window_title("Planisuss World")
             self.setup_controls()
@@ -275,17 +301,18 @@ class Interface():
 
 
     def setup_controls(self):
-        gs_controls = GridSpec(1, 3, figure=self._fig_map, height_ratios=[1], width_ratios=[1, 1, 1], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
+        gs_controls = GridSpec(1, 5, figure=self._fig_map, height_ratios=[1], width_ratios=[2, 2, 2, 2, 2], left=0.1, right=0.9, top=0.15, bottom=0.07, wspace=0.05)
         controls = {
             'ax_pause' : (self._fig_map.add_subplot(gs_controls[0, 0]), "files//pause.png"),
-            'ax_play' : (self._fig_map.add_subplot(gs_controls[0, 1]), "files//play.png"),
-            'ax_x2' : (self._fig_map.add_subplot(gs_controls[0, 2]), "files//x2.png")
-        
+            'ax_play' : (self._fig_map.add_subplot(gs_controls[0, 1]), "files//test.png"),
+            'ax_x2' : (self._fig_map.add_subplot(gs_controls[0, 2]), "files//x2.png"),
+            'ax_tombs' : (self._fig_map.add_subplot(gs_controls[0, 3]), "files//tombs.png"),
+            'ax_stats' : (self._fig_map.add_subplot(gs_controls[0, 4]), "files//stats.png")
         }
         for name, (ax, pathImg) in controls.items():   
             try:
                 img = Image.open(pathImg)
-                ax.imshow(img, extent=[0, 1, 0, 1])
+                ax.imshow(img)
                 ax.axis('off')
                 setattr(self, name, ax)
             except FileNotFoundError:
@@ -317,21 +344,21 @@ class Interface():
         self.vegetob_artists.clear()
 
         logger.debug("Drawing new elements")
-        self.draw_elements(self.grid)
+        self.draw_elements(self.grid, self.currentDay)
 
         logger.debug(f"Frame {frameNum} complete, returning {2 + len(self.alive_animal_artists) + len(self.vegetob_artists)} artists")
         
         return [img, self.day_text] + list(self.alive_animal_artists.values()) + list(self.dead_animal_artists.values()) + self.vegetob_artists
     
-    def draw_elements(self, grid):
+    def draw_elements(self, grid, day):
         for i in range(grid.shape[0]):
             for j in range(grid.shape[1]):
                 cell = self.env.getGrid()[i, j]
                 if isinstance(cell, LandCell):
-                    self.draw_animals_in_cell(cell)
+                    self.draw_animals_in_cell(cell, day)
                     self.draw_vegetob(cell, i, j)
 
-    def draw_animals_in_cell(self, cell):
+    def draw_animals_in_cell(self, cell, day):
         erbast_list = cell.getErbastList()
         carviz_list = cell.getCarvizList()
         dead_list = [dead.deadAnimal for dead in cell.getDeadCreaturesList()]
@@ -353,7 +380,9 @@ class Interface():
         for dead in dead_list:
             if dead not in self.dead_animal_artists and dead not in self.processed_dead_animals:
                 logger.debug(f"Drawing dead animal {dead} as Rectangle")
-                self.draw_dead_animal(dead)
+                self.draw_dead_animal(dead, day)
+            else:
+                self.draw_dead_animal(dead, day, remove=True)
 
     def draw_living_animal(self, animal):
         shift_x, shift_y = np.random.uniform(-0.3, 0.3, 2)
@@ -375,22 +404,48 @@ class Interface():
             self.ax_plot.add_artist(new_artist)
             self.alive_animal_artists[animal] = new_artist
         
-    def draw_dead_animal(self, animal):
+    def draw_dead_animal(self, animal, day, remove=False):
         logger.debug(f"Drawing dead animal {animal} as Rectangle")
         shift_x, shift_y = np.random.uniform(-0.3, 0.3, 2)
         x, y = animal.getCoords()
         
-        if isinstance(animal, Carviz):
-            color = [253 / 255, 174 / 255, 69 / 255]
+        if remove is False:
+            if isinstance(animal, Carviz):
+                color = [253 / 255, 174 / 255, 69 / 255]
+            else:
+                color = [240 / 255, 255 / 255, 240 / 255]
+            new_artist = Rectangle(xy=(y + shift_y, x + shift_x), 
+                                width=0.2, height=0.2, 
+                                color=color, fill=True, alpha=1)
+            
+            self.ax_plot.add_artist(new_artist)
+            self.dead_animal_artists[animal] = new_artist
+            self.processed_dead_animals.add((animal, day))
         else:
-            color = [240 / 255, 255 / 255, 240 / 255]
-        new_artist = Rectangle(xy=(y + shift_y, x + shift_x), 
-                            width=0.2, height=0.2, 
-                            color=color, fill=True, alpha=1)
-        
-        self.ax_plot.add_artist(new_artist)
-        self.dead_animal_artists[animal] = new_artist
-        self.processed_dead_animals.add(animal)
+            dead_day = 0
+            for dead, d in self.processed_dead_animals:
+                if dead == animal:
+                    dead_day = d
+                    break
+            if day - dead_day >= 3:
+                # print("Removing dead animal after 3 days")
+                if animal not in self.old_tombs:
+                    self.old_tombs.add(animal)
+                if not self.tomb_show:
+                    self.dead_animal_artists[animal].set_visible(False)
+            else:
+                # print("Not enough days have passed")
+                self.dead_animal_artists[animal].set_visible(self.tomb_show)
+
+    def remove_tombs(self):
+        print("Removing all tombs")
+        for dead, artist in self.dead_animal_artists.items():
+            artist.set_visible(False)
+    
+    def display_tombs(self):
+        print("Displaying all tombs")
+        for dead, artist in self.dead_animal_artists.items():
+            artist.set_visible(True)
 
     def draw_vegetob(self, cell, i, j):
         cell_density = cell.getVegetobDensity()
@@ -420,7 +475,7 @@ class Interface():
         logger.debug(f"Artists by type: {circle_count} Circles, {rectangle_count} Rectangles, {other_count} other")
         
     def onclick(self, event):
-        if event.inaxes not in [self.ax_pause, self.ax_play, self.ax_x2, self.ax_plot]: return
+        if event.inaxes not in [self.ax_pause, self.ax_play, self.ax_x2, self.ax_tombs, self.ax_stats, self.ax_plot]: return
         
         x, y = event.xdata, event.ydata
         print(self.grid.shape)
@@ -432,14 +487,24 @@ class Interface():
         
         if event.inaxes == self.ax_play:
             print('Play clicked')
+            self.button_pressed_play = True
+            if self.button_pressed_play:
+                self.ax_play.imshow(Image.open("files//test2.png"))
+            if self.button_pressed_pause:
+                self.ax_pause.imshow(Image.open("files//pause.png"))
+                self.button_pressed_pause = False
             if not self.anim_running:
                 self.start()
-            else:  
+            else:
+                self.button_pressed_play = False
+                self.ax_play.imshow(Image.open("files//test.png"))
                 self.pause_animation()
         elif event.inaxes == self.ax_x2:
-            print("x2 clicked")
+            print("x5 clicked")
+            self.ax_x2.imshow(Image.open("files//x5_clicked.png"))
             if self.faster:
                 print("Reverting to normal speed")
+                self.ax_x2.imshow(Image.open("files//x2.png"))
                 self.normal_animation()
             else:
                 self.faster_animation()
@@ -449,9 +514,33 @@ class Interface():
             # self.env.nextDay()
             print(f"cell {grid_x,grid_y} has been clicked")
             self.show_cell_info(grid_x, grid_y)
+        elif event.inaxes == self.ax_tombs:
+            print('Tombs clicked, removing all tombs')
+            self.tomb_show = not self.tomb_show
+            if not self.tomb_show:
+                self.ax_tombs.imshow(Image.open("files//tombs_clicked.png"))
+                self.remove_tombs()
+            else:
+                self.ax_tombs.imshow(Image.open("files//tombs.png"))
+                self.display_tombs()
+        elif event.inaxes == self.ax_stats:
+            print('Stats clicked')
+            self.show_stats()
         else:
             print('Stop clicked')
+            if not self.button_pressed_pause:
+                self.button_pressed_pause = True
+                self.ax_pause.imshow(Image.open("files//pause_clicked.png"))
+            else:
+                self.ax_pause.imshow(Image.open("files//pause.png"))
+                self.button_pressed_pause = False
+            if self.button_pressed_play:
+                self.ax_play.imshow(Image.open("files//test.png"))
+                self.button_pressed_play = False
             self.pause_animation()
+            
+    def show_stats(self):
+        fig_stats = plt.figure(figsize=(8, 8), dpi=100)
 
         
     def gridToRGB(self, grid, save=False, seed=None):
@@ -517,7 +606,7 @@ class Interface():
         # self.animal_artists.clear()
 
         self.img = self.ax_plot.imshow(initial_grid, interpolation='nearest')
-        self.draw_elements(initial_grid)
+        self.draw_elements(initial_grid, day=0)
         self.day_text.set_text(f'Day 0')
         # plt.pause(0.1)
         return self.img
@@ -527,13 +616,15 @@ class Interface():
             self.ani.event_source.stop()
             self.anim_running = False
         else:
-            self.ani.event_source.start()
-            self.anim_running = True
+            print("Animation is already paused")
+            self.anim_running = False
+            # self.ani.event_source.start()
+            # self.anim_running = True
     
     def faster_animation(self):
         if self.anim_running:
             self.ani.event_source.stop()
-            self.ani.event_source.interval = 50
+            self.ani.event_source.interval = 20
             self.ani.event_source.start()
             self.faster = True
     
@@ -556,15 +647,15 @@ class Interface():
         else:
             img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_HIGH'])
         
-        fig = plt.figure(figsize=(5,5))
+        fig = plt.figure(figsize=(8, 8), dpi=100)
         gs = GridSpec(2, 2, height_ratios=[3, 1], figure=fig)
         ax_img = fig.add_subplot(gs[0, 0])
         
         # ax = ShowCard.remove_text(self.ax[1])
-        extent = [0, 0.5, 0.5, 1]
+        extent = [0, 1, 0, 1]
         ax_img.imshow(img_cell, extent=extent)
-        ax_img.text(0.01, 0.45, f"Cell's coordinates: {x}, {y}", ha='left')
-        ax_img.text(0.01, 0.35, f"Cell's vegetob density: {cell.getVegetobDensity()}")
+        ax_img.text(0.01, -0.45, f"Cell's coordinates: {x}, {y}", ha='left')
+        ax_img.text(0.01, -0.35, f"Cell's vegetob density: {cell.getVegetobDensity()}")
         ax_img.axis('off')
         
         
@@ -637,7 +728,7 @@ class Interface():
         for i in range(n):
             ax = fig.add_subplot(gs[start_row + 1 + i, 0])
             if empty:
-                ax.text(0.3, 0.3, f"{s_empty}", ha='center', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
+                ax.text(0.3, 0.3, f"{s_empty}", ha='center', bbox=dict(facecolor=self.AXES_COLOR, edgecolor='black', boxstyle='round'))
                 individuals_axis.append((ax, None))
             else:
                 animal = list_animals[i]
@@ -647,7 +738,7 @@ class Interface():
                     s = f"Carviz{str(animal.id)}"
                 else:
                     s = f"Dead animal {str(animal.old_species)}{str(animal.id)}"
-                ax.text(0.3, 0.3, f"{s}", ha='center', bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
+                ax.text(0.3, 0.3, f"{s}", ha='center', bbox=dict(facecolor=self.AXES_COLOR, edgecolor='black', boxstyle='round'))
                 individuals_axis.append((ax, list_animals[i]))
 
             ax.axis('off')
@@ -657,13 +748,14 @@ class Interface():
     
     def track_onclick(self, event, individuals_axis):
         for i, (ax, individual) in enumerate(individuals_axis):
-            if ax == event.inaxes:
+            if ax == event.inaxes and individual is not None:
                 self.show_individuals(individual)
                 break
 
     def show_individuals(self, clicked_individual):
         """Display individual's information in a new figure."""
-        fig = plt.figure(figsize=(5,5))
+        dead_creature = False
+        fig = plt.figure(figsize=(5,5), dpi=100)
         gs_stats = GridSpec(5, 2, figure=fig, 
                         width_ratios=[1, 1], 
                         height_ratios=[0.4, 0.4, 0.4, 0.2, 0.2], 
@@ -672,7 +764,8 @@ class Interface():
         # Create subplots
         if isinstance(clicked_individual, DeadCreature):
             clicked_individual = clicked_individual.deadAnimal
-        self.create_animal_subplot(fig, gs_stats, clicked_individual)
+            dead_creature = True
+        self.create_animal_subplot(fig, gs_stats, clicked_individual, dead_creature)
         self.create_age_subplot(fig, gs_stats, clicked_individual.age)
         self.create_energy_subplot(fig, gs_stats, clicked_individual.getEnergy())
         self.create_social_att_subplot(fig, gs_stats, clicked_individual.socialAttitude)
@@ -687,20 +780,23 @@ class Interface():
         ax_info.text(0.5, 0.5, 'Extra Info:', 
                     fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
         social_group = "Individual belongs to a social group" if clicked_individual.inSocialGroup else "Individual is alone"
-        ax_info.text(0.5, 0.15, social_group, 
+        ax_info.text(0.5, 0.015, social_group, 
                     fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
         status = "Alive" if clicked_individual.alive else "Dead"
-        ax_info.text(0.5, -0.2, f"Status: {status}", 
+        ax_info.text(0.5, -0.4, f"Status: {status}", 
                     fontsize=8, ha='center', va='center', transform=ax_info.transAxes)
         ax_info.axis('off')
         
         fig.subplots_adjust(hspace=0.7)
         fig.show()
 
-    def create_animal_subplot(self, fig, gs_stats, clicked_individual):
+    def create_animal_subplot(self, fig, gs_stats, clicked_individual, dead_creature=False):
         """Create subplot for animal image."""
         ax_animal = fig.add_subplot(gs_stats[0:2, 0])
-        animal_path = "files//carvizN.jpg" if isinstance(clicked_individual, Carviz) else "files//erbastN.jpg"
+        if dead_creature:
+            animal_path = "files//erbast_dead.png" if isinstance(clicked_individual, Erbast) else "files//carviz_dead.png"
+        else:
+            animal_path = "files//carvizN.jpg" if isinstance(clicked_individual, Carviz) else "files//erbastN.jpg"
         animal_art = Image.open(animal_path)
         ax_animal.imshow(animal_art, extent=[0.0, 1.0, 0.0, 1.0])
         ax_animal.text(0.5, -0.1, f"Individual's ID: {clicked_individual.id} ", 
@@ -721,7 +817,7 @@ class Interface():
         ax_social_att = fig.add_subplot(gs_stats[2, 1])
         socialAtt = Image.open(att_path).resize((2000, 700))
         ax_social_att.imshow(socialAtt)
-        ax_social_att.text(0.5, -0.1, f'Social ATT: {individual_att}', fontsize=8, ha='left', va='center', transform=ax_social_att.transAxes)
+        ax_social_att.text(0.3, -0.1, f'Social ATT: {individual_att:.2f}', fontsize=8, ha='left', va='center', transform=ax_social_att.transAxes)
         ax_social_att.axis('off')
         return ax_social_att
     
