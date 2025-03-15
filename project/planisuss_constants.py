@@ -54,7 +54,7 @@ AGING = 10           # energy lost each month
 AGING_E = 10          # energy lost each month for Erbast
 AGING_C = 5          # energy lost each month for Carviz
 
-GROWING = 1          # Vegetob density that grows per day.
+GROWING = 2          # Vegetob density that grows per day.
 
 # our constants
 
