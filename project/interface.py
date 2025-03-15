@@ -88,6 +88,9 @@ class Interface():
         self.ani = None
         self.faster = False
         self.selected_map = None
+        self.generation_type = "random"
+        self.numErb = 50
+        self.numCarv = 50
 
     def run_simulation(self):
         plt.ion() 
@@ -155,14 +158,20 @@ class Interface():
             seed = self.WORLD_CONFIGS[self.selected_map]["seed"]
             self.set_environment(seed)
 
+    def set_generation_type(self, type, nErb = 50, nCarv = 50):
+        self.generation_type = type
+        self.numErb = nErb
+        self.numCarv = nCarv
+
     def set_environment(self, seed):
         environment = Environment(seed=seed)
         self.env = environment
         self.grid = self.gridToRGB(environment.getGrid(), save=True, seed=seed)
-        self.initialize_population(environment, type="random", nErb=100, nCarv=100)
+        # self.initialize_population(environment, type="random", nErb=100, nCarv=100)
+        self.initialize_population(environment, self.generation_type, self.numErb, self.numCarv)
         self.create_map_and_start()
 
-    def initialize_population(self, environment, type:str = "test1", nErb = 10, nCarv = 10):
+    def initialize_population(self, environment, type:str = "test1", nErb = 100, nCarv = 100):
         grid_shape = environment.getGrid().shape
         land_cells = [(x, y) for x in range(grid_shape[0]) for y in range(grid_shape[1])
                     if environment.isLand(x, y)]
@@ -201,8 +210,6 @@ class Interface():
 
             erbs = [
                 Erbast((25,25)),
-                Erbast((25,25)),
-                Erbast((25,25)),
                 Erbast((28,28)),
                 Erbast((28,28)),
                 Erbast((30,30))
@@ -210,11 +217,8 @@ class Interface():
 
             carvs = [
                 Carviz((24, 24)),
-                Carviz((24, 24)),
-                Carviz((24, 24)),
-                Carviz((26, 26)),
-                Carviz((26, 26)),
-                Carviz((26, 26))
+                Carviz((27, 27)),
+                Carviz((27, 27))
             ]
 
             for el in erbs:

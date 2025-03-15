@@ -184,8 +184,7 @@ class Environment:
                 self.totCarviz -= 1
                 return True
             
-        logging.error(f"animal: {animal}, at coords {animal.getCoords()}, is not present in any cell or is not a Erbast/Carviz")
-        raise Exception(f"animal: {animal}, at coords {animal.getCoords()}, is not present in any cell or is not a Erbast/Carviz")
+        logging.error(f"animal: {animal}, at coords {animal.getCoords()}, is not present in any cell")
                                                                 
     def removeGroup(self, group:SocialGroup):
         """"""
@@ -223,16 +222,15 @@ class Environment:
         if not all(isinstance(obj, Species) for obj in nextCoords.keys()):
             raise TypeError(f"can't move objects which are not animals or SocialGroups")
         
-        objects = nextCoords.keys()
-        
-        #for o in objects:
         
         for o, c in nextCoords.items():
+            if isinstance(o, SocialGroup) and len(o.getComponents()) < 2:
+                logging.warning(f"SocialGroup {o} has less than 2 components, removing it")
+                self.remove(o)
+                continue
             self.remove(o)
             self._changeCoords(o, c)
             self.add(o)
-        
-        #for o in objects:
         
     def _changeCoords(self, obj:Species,newCoords:tuple):
         """helper func to change the coords of an animal or a socialgroup"""
@@ -423,14 +421,14 @@ class Environment:
                 erbastEnergy = strongestErbast.getEnergy()
                 if isinstance(hunter, Pride):
                     numPrideComponents = len(hunter.getComponents())
-                    hunterStrength = hunter.getGroupEnergy() * numPrideComponents * hunter.getGroupSociality()
+                    hunterStrength = hunter.getGroupEnergy() * numPrideComponents * hunter.getGroupSociality() + 1
                 elif isinstance(hunter, Carviz):
-                    hunterStrength = hunter.getEnergy() * (2 - hunter.getSocialAttitude())
+                    hunterStrength = hunter.getEnergy() * (2 - hunter.getSocialAttitude()) + 1
 
                 erbastLuck = random.randint(1,3)
                 huntProbability = self._hunt_probability(erbastEnergy, hunterStrength) * erbastLuck
 
-                while attempts < 3: # 3 assaults
+                while attempts < 5: # 5 assaults
 
                     if isinstance(hunter, Pride):
 
@@ -447,9 +445,16 @@ class Environment:
                             spareEnergy = erbastEnergy % numPrideComponents
                             hungriestCarviz = min(hunter.getComponents(), key = lambda x : x.getEnergy())
                             hungriestCarviz.changeEnergy(spareEnergy) 
-                            break
+
+                            if coords in cellHerds:
+                                if len(herd.getComponents()) > 1:
+                                    strongestErbast = max(herd.getComponents(), key = lambda x : x.getEnergy())
+                                else:
+                                    break
+                            else:
+                                break
                         else:
-                            hunter.changeGroupSociality(-0.04)
+                            hunter.changeGroupSociality(-0.1)
                             attempts += 1
                             anyAlive = any(self.changeEnergyAndHandleDeath(hunter, -2).values())
                             logging.info(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. any Alive?: {anyAlive}")
@@ -462,9 +467,17 @@ class Environment:
                             self.creatureDeath(strongestErbast)
                             logging.info(f"{strongestErbast} has been killed by {hunter}")
                             hunter.changeEnergy(erbastEnergy)
-                            break
+                            hunter.socialAttitude -= 0.1
+                            if coords in cellHerds:
+                                if len(herd.getComponents()) > 1:
+                                    strongestErbast = max(herd.getComponents(), key = lambda x : x.getEnergy())
+                                else:
+                                    break
+                            else:
+                                break
                         else:
                             attempts += 1
+                            hunter.socialAttitude += 0.1
                             alive = self.changeEnergyAndHandleDeath(hunter, -2)[hunter]
                             logging.info(f"{hunter} failed to hunt {strongestErbast}, attempt {attempts}. alive?: {alive}")
                             if not alive:
@@ -524,9 +537,15 @@ class Environment:
                 nextCoords.pop(c)
             else: # moving
 
-                aliveDict = self.changeEnergyAndHandleDeath(c, ENERGY_LOSS)
+                if isinstance(c, (Pride, Carviz)):
+                    aliveDict = self.changeEnergyAndHandleDeath(c, ENERGY_LOSS_C)
+                    
+                elif isinstance(c, (Erbast, Herd)):
+                    aliveDict = self.changeEnergyAndHandleDeath(c, ENERGY_LOSS_E)
+                else:
+                    raise TypeError(f"{c} is not a Carviz, Erbast, Pride or Herd")
 
-                if sum(aliveDict.values()) < 2 and isinstance(c, SocialGroup): # 0 or 1 alive
+                if isinstance(c, SocialGroup) and sum(aliveDict.values()) < 2: # 0 or 1 alive
                     logging.info(f"Of {c}, all except {sum(aliveDict.values())} are alive during movement due to starvation")
                     nextCoords.pop(c)
                 else:

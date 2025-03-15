@@ -61,6 +61,17 @@ def checkCoordsInBoundary(coords):
         return True
     else:
         return False
+    
+def logDesirabilityMatrix(worldGrid, desirabilityScores, animal):
+    logging.debug(f"Desirability matrix for {animal}")
+    for row in worldGrid:
+        row_str = ""
+        for c in row:
+            if c in desirabilityScores:
+                row_str += f"{desirabilityScores[c]:6.2f} "
+            else:
+                row_str += "  N/A  "
+        logging.debug(row_str)
 
 class Species():
     """Class from which Erbasts, Carvizes, Herds and Prides inherit"""
@@ -161,13 +172,19 @@ class Animal(Species):
                 return self.alive, offsprings
 
             if self.age % MONTH == 0:
-                self.energy -= AGING
+
+                if isinstance(self, Erbast):
+                    self.energy -= AGING_E
+                elif isinstance(self, Carviz):
+                    self.energy -= AGING_C
+
                 if self.energy <= 0:
                     self.energy = 0
                     self.alive = False
                     logging.info(f"{self} died of starvation due to aging")
         else:
-            raise RuntimeError(f"Cannot age a dead animal: {self}, age: {self.age}, lifetime: {self.lifetime}")
+            logging.error(f"Cannot age a dead animal: {self}, age: {self.age}, lifetime: {self.lifetime}")
+            offsprings = None
         
         return self.alive, offsprings
     
@@ -175,7 +192,7 @@ class Animal(Species):
         """Reproduce an Animal, returns 2 offspring"""
         age = 0
         energy = max(5, self.energy // 2)
-        socialAttitude = self.socialAttitude + random.uniform(-0.2, 0.2)
+        socialAttitude = min(1, max(0, self.socialAttitude + random.uniform(-0.2, 0.2)))
         coords = self.getCoords()
         neighboordhoodDistance = self.neighborhoodDistance
         if isinstance(self, Erbast):
@@ -289,11 +306,11 @@ class Erbast(Animal):
 
                  # Other Erbast evaluation --------------------------------
 
-                individualTolerance = self.socialAttitude * 10 + random.randint(0,2) # tolerance for the maximum number of erbasts (too many won't be able to share resources)
+                individualTolerance = self.socialAttitude * 5 + random.randint(0,10) # tolerance for the maximum number of erbasts (too many won't be able to share resources)
 
                 ourErbasts = presentCell.numErbast
                 theirErbasts = cell.numErbast
-                sumErbasts = presentCell.numErbast + cell.numErbast
+                sumErbasts = ourErbasts + theirErbasts
 
                 if sumErbasts <= individualTolerance:
 
@@ -311,6 +328,9 @@ class Erbast(Animal):
                     #if they are not more than us, we stil want to join so we stay still
                     elif theirErbasts > 0:
                         desirabilityScores[presentCell] += cell.numErbast * self.socialAttitude
+                
+                else:
+                    desirabilityScores[cell] -= theirErbasts * self.socialAttitude
 
                 # Vegetob evaluation --------------------------------
 
@@ -336,15 +356,7 @@ class Erbast(Animal):
         for cell in desirabilityScores:
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
-        logging.debug(f"Desirability matrix for {self}:")
-        for row in worldGrid:
-            row_str = ""
-            for c in row:
-                if c in desirabilityScores:
-                    row_str += f"{desirabilityScores[c]:6.2f} "
-                else:
-                    row_str += "  N/A  "
-            logging.debug(row_str)
+        # logDesirabilityMatrix(worldGrid, desirabilityScores, self)
 
         returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
         return returnDict
@@ -372,7 +384,7 @@ class Carviz(Animal):
     ID = 1
 
     VEG_NEED = 0.005 # carvist do not need vegetob, but it makes sense for them to look for erbast in food rich zones #TODO but maybe it is more reasonable to look where food has been eaten?
-    ERBAST_NEED = 1.2
+    ERBAST_NEED = 4
     
     ENERGY_WEIGHT = 0.1 # scales how much energy matters overall
     ENERGY_WEIGHT2 = 0.8 # lower value -> more likely to stay even at high energy levels
@@ -412,37 +424,41 @@ class Carviz(Animal):
                     desirabilityScores[c] += cellInterest * 0.6
 
             desirabilityScores[cell] += cell.getVegetobDensity() * Carviz.VEG_NEED
+
+            if presentCell != cell:
             
-            # other carvizes evaluation --------------------------------
+                # other carvizes evaluation --------------------------------
 
-            individualTolerance = self.socialAttitude * 8 + random.randint(0,2) # tolerance for the maximum number of carvizes (too many won't be able to share resources)
+                individualTolerance = self.socialAttitude * 4 + random.randint(0,7) # tolerance for the maximum number of carvizes (too many won't be able to share resources)
 
-            ourCarvizes = presentCell.numCarviz
-            theirCarvizes = cell.numCarviz
-            sumCarvizes = presentCell.numCarviz + cell.numCarviz
+                ourCarvizes = presentCell.numCarviz
+                theirCarvizes = cell.numCarviz
+                sumCarvizes = ourCarvizes + theirCarvizes
 
-            if sumCarvizes <= individualTolerance:
+                if sumCarvizes <= individualTolerance:
 
-                #smaller group will join the bigger one
-                if ourCarvizes < theirCarvizes: 
-                    desirabilityScores[cell] += theirCarvizes * self.socialAttitude
-
-                # if we are the same number we can join or stay still by random choice
-                elif ourCarvizes == theirCarvizes:
-                    if random.random() > 0.5:
+                    #smaller group will join the bigger one
+                    if ourCarvizes < theirCarvizes: 
                         desirabilityScores[cell] += theirCarvizes * self.socialAttitude
-                    else:
+
+                    # if we are the same number we can join or stay still by random choice
+                    elif ourCarvizes == theirCarvizes:
+                        if random.random() > 0.5:
+                            desirabilityScores[cell] += theirCarvizes * self.socialAttitude
+                        else:
+                            desirabilityScores[presentCell] += theirCarvizes * self.socialAttitude
+
+                    #if they are not more than us, we stil want to join so we stay still
+                    elif theirCarvizes > 0:
                         desirabilityScores[presentCell] += theirCarvizes * self.socialAttitude
 
-                #if they are not more than us, we stil want to join so we stay still
-                elif theirCarvizes > 0:
-                    desirabilityScores[presentCell] += theirCarvizes * self.socialAttitude
-
         # Staying likability evaluation - carviz are very unlikely to stay still, they're constantly looking for Erbasts
-        desirabilityScores[presentCell] -= round(((100 - self.energy)**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT),2) #when the energy is low a prey must be found
+        desirabilityScores[presentCell] -= 1.5
 
         for cell in desirabilityScores:
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
+        
+        logDesirabilityMatrix(worldGrid, desirabilityScores, self)
 
         returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells}
         return returnDict
@@ -486,6 +502,8 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
     def updateCoords(self, newCoords:tuple[int,int]):
         """Should always be used to update Coords"""
         self.lastCoords.append(self.coords)
+        if len(self.lastCoords) > self.memory:
+            self.lastCoords.pop(0)
         self.coords = newCoords
     
     def getGroupSociality(self):
@@ -618,15 +636,22 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
             # if there are too many individuals in the same cell they will probably die due to lack of resources
             tooManyIndividualsPenalty = 0
             if self.numComponents > individualTolerance:
-                tooManyIndividualsPenalty = 6 * (1 - c.socialAttitude)
+                tooManyIndividualsPenalty = 6 * (1.5 - c.socialAttitude)
             
             maximumTolerance = (tooManyIndividualsPenalty - c.socialAttitude)
 
             if individualDesiredValue < maximumTolerance: #if individual preference is lower than maximum tolerance
-                individualDecidedCoords = max(individualValues, key=individualValues.get)
+
+                individualDesiredCoordsSorted = sorted(individualValues, key=individualValues.get, reverse=True)
+
+                top_3_choices = individualDesiredCoordsSorted[:3]
+                individualDecidedCoords = random.choice(top_3_choices) # stochasticity!
+
                 if groupdecidedCoords != individualDecidedCoords: #and the individual choice is different from the group choice
+
                     leavingIndividualsAndDirection[c] = individualDecidedCoords # get individual preferred movement
                     logging.info(f"{c} in {c.getCoords()}, differently from the group, wants to go at: {max(individualValues, key=individualValues.get)}")
+
                     if len(leavingIndividualsAndDirection) == self.numComponents - 1:
                         logging.info(f"The group {self} disbanded, the individuals {self.getComponents()} are now free to go")
                         components = self.getComponents()
@@ -719,7 +744,7 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
 
                 # Other Erbast evaluation --------------------------------
 
-                individualTolerance = groupSociality * 10 + random.randint(0,2) # tolerance for the maximum number of erbasts (too many won't be able to share resources)
+                individualTolerance = groupSociality * 5 + random.randint(0,10)# tolerance for the maximum number of erbasts (too many won't be able to share resources)
 
                 ourErbasts = presentCell.numErbast
                 theirErbasts = cell.numErbast
@@ -742,6 +767,9 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
                     elif theirErbasts > 0:
                         desirabilityScores[presentCell] += cell.numErbast * groupSociality
 
+                else:
+                    desirabilityScores[cell] -= theirErbasts * groupSociality
+
                 # Vegetob evaluation --------------------------------
 
                 desirabilityScores[cell] += cell.getVegetobDensity() * Erbast.VEG_NEED
@@ -751,7 +779,6 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
             if cell in {worldGrid[coords] for coords in self.lastCoords[max(-len(self.lastCoords),-self.memory):]}: 
                 desirabilityScores[cell] -= SocialGroup.GOING_BACK_PENALTY
 
-        desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells
         
         # Staying likability evaluation ----------------------------
 
@@ -772,17 +799,9 @@ class Herd(SocialGroup): # TODO - Add Herd Escape rankMoves logic
         for cell in desirabilityScores:
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
-        logging.debug(f"Desirability matrix for Herd {self}:")
-        for row in worldGrid:
-            row_str = ""
-            for c in row:
-                if c in desirabilityScores:
-                    row_str += f"{desirabilityScores[c]:6.2f} "
-                else:
-                    row_str += "  N/A  "
-            logging.debug(row_str)
+        # logDesirabilityMatrix(worldGrid, desirabilityScores, self)
 
-        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
+        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells}
         return returnDict
 
     def _getVegetobDistribution(self, energies:list[int], availableVegetob: int) -> list[int]:
@@ -894,52 +913,43 @@ class Pride(SocialGroup):
                 for c in CellsInRange_3:
                     desirabilityScores[c] += cellInterest * 0.3
 
-                logging.debug(f"Desirability matrix for Pride {self}:")
-                for row in worldGrid:
-                    row_str = ""
-                    for c in row:
-                        if c in desirabilityScores:
-                            row_str += f"{desirabilityScores[c]:6.2f} "
-                        else:
-                            row_str += "  N/A  "
-                    logging.debug(row_str)
-
             # Vegetob is not a priority for Carvizes, but it makes sense for them to look for Erbasts in food rich zones
             desirabilityScores[cell] += cell.getVegetobDensity() * Carviz.VEG_NEED
             desirabilityScores[cell] = round(desirabilityScores[cell], 2)
 
-            # other carvizes evaluation --------------------------------
+            if presentCell != cell:
 
-            individualTolerance = groupSociality * 8 + random.randint(0,2) # tolerance for the maximum number of carvizes (too many won't be able to share resources)
+                # other carvizes evaluation --------------------------------
 
-            ourCarvizes = presentCell.numCarviz
-            theirCarvizes = cell.numCarviz
-            sumCarvizes = presentCell.numCarviz + cell.numCarviz
+                individualTolerance = groupSociality * 4 + random.randint(0,7) # tolerance for the maximum number of carvizes (too many won't be able to share resources)
 
-            if sumCarvizes <= individualTolerance:
+                ourCarvizes = presentCell.numCarviz
+                theirCarvizes = cell.numCarviz
+                sumCarvizes = ourCarvizes + theirCarvizes
 
-                #smaller group will join the bigger one
-                if ourCarvizes < theirCarvizes: 
-                    desirabilityScores[cell] += theirCarvizes * groupSociality
+                if sumCarvizes <= individualTolerance:
 
-                # if we are the same number we can join or stay still by random choice
-                elif ourCarvizes == theirCarvizes:
-                    if random.random() > 0.5:
+                    #smaller group will join the bigger one
+                    if ourCarvizes < theirCarvizes: 
                         desirabilityScores[cell] += theirCarvizes * groupSociality
-                    else:
+
+                    # if we are the same number we can join or stay still by random choice
+                    elif ourCarvizes == theirCarvizes:
+                        if random.random() > 0.5:
+                            desirabilityScores[cell] += theirCarvizes * groupSociality
+                        else:
+                            desirabilityScores[presentCell] += theirCarvizes * groupSociality
+
+                    #if they are not more than us, we stil want to join so we stay still
+                    elif theirCarvizes > 0:
                         desirabilityScores[presentCell] += theirCarvizes * groupSociality
-
-                #if they are not more than us, we stil want to join so we stay still
-                elif theirCarvizes > 0:
-                    desirabilityScores[presentCell] += theirCarvizes * groupSociality
-
-        desirabilityScores = {cell:desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells} # remove far away cells
         
-        # Staying likability evaluation - carviz are very unlikely to stay still, they're constantly looking for Erbasts
-        desirabilityScores[presentCell] -= ((100 - self.getGroupEnergy())**Carviz.ENERGY_EXPONENT * Carviz.ENERGY_WEIGHT) #when the energy is low a prey must be found
-        desirabilityScores[presentCell] = round(desirabilityScores[presentCell], 2)
+        # Staying likability evaluation - carviz are unlikely to stay still, they're constantly looking for Erbasts
+        desirabilityScores[presentCell] = round(desirabilityScores[presentCell] - 1.5, 2)
 
-        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores}
+        logDesirabilityMatrix(worldGrid, desirabilityScores, self)
+
+        returnDict = {cell.getCoords():desirabilityScores[cell] for cell in desirabilityScores if cell in reachableCells}
         return returnDict
 
     def __repr__(self):

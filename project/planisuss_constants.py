@@ -14,7 +14,7 @@ Stefano Ferrari
 
 ### Game constants
 
-NUMDAYS = 100     # Length of the simulation in days
+NUMDAYS = 500     # Length of the simulation in days
 
 # geometry
 NUMCELLS = 50     # size of the (square) grid (NUMCELLS x NUMCELLS)
@@ -41,16 +41,18 @@ MAX_ENERGY_E = 100   # maximum value of Energy for Erbast
 MAX_ENERGY_C = 100   # maximum value of Energy for Carviz
 
 ENERGY_LOSS = -5      # Energy lost by moving each day
+ENERGY_LOSS_E = -7    # Energy lost by moving each day for Erbast
+ENERGY_LOSS_C = -1    # Energy lost by moving each day for Carviz
 
-MAX_LIFE = 15   # maximum value of Lifetime
-MAX_LIFE_E = 15  # maximum value of Lifetime for Erbast
+MAX_LIFE = 10  # maximum value of Lifetime
+MAX_LIFE_E = 10  # maximum value of Lifetime for Erbast
 MAX_LIFE_C = 15   # maximum value of Lifetime for Carviz
 
 MONTH = 5            # number of days in a month
 
 AGING = 10           # energy lost each month
 AGING_E = 10          # energy lost each month for Erbast
-AGING_C = 10          # energy lost each month for Carviz
+AGING_C = 5          # energy lost each month for Carviz
 
 GROWING = 1          # Vegetob density that grows per day.
 
