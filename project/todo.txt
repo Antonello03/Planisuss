@@ -1,5 +1,5 @@
 Nello
-- improve carviz life and check why they don't get to live that much
-- store statistics in environment
 - my report part
 - my slides part
+
+- too many carviz in 1 pride

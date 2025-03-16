@@ -9,9 +9,6 @@ import json
 import logging
 import pprint
 
-# TODO Carviz join dynamic and others...
-# TODO groups should be smart enough to avoid going back to the same cell...
-
 ON = 255
 OFF = 0
 
@@ -31,6 +28,42 @@ class Environment:
         self.totErbast = 0
         self.totCarviz = 0
         self.day = -1
+
+        self.statistics = {
+            "Number of Erbasts" : [],
+            "Number of Carvizes" : [],
+            "Number of Herds" : [],
+            "Number of Prides" : [],
+            "Average Herd Size" : [],
+            "Average Pride Size" : [],
+            "Average Erbast Energy" : [],
+            "Average Carviz Energy" : [],
+            "Number of Dead Creatures" : [],
+            "Successfull Hunts" : [],
+            "Number of Hunts" : [],
+            "Average Vegetob Density" : [],
+            "Average Erbast Social Attitude" : [],
+            "Average Carviz Social Attitude" : [],
+        }
+
+    def computeStatistics(self, totHunts = 0, succesfulHunts = 0):
+        """
+        Compute statistics for the current day
+        """
+        self.statistics["Number of Erbasts"].append(self.totErbast)
+        self.statistics["Number of Carvizes"].append(self.totCarviz)
+        self.statistics["Number of Herds"].append(len(self.getHerds()))
+        self.statistics["Number of Prides"].append(len(self.getPrides()))
+        self.statistics["Average Herd Size"].append(sum([len(herd.getComponents()) for herd in self.getHerds()]) / len(self.getHerds()) if len(self.getHerds()) > 0 else 0)
+        self.statistics["Average Pride Size"].append(sum([len(pride.getComponents()) for pride in self.getPrides()]) / len(self.getPrides()) if len(self.getPrides()) > 0 else 0)
+        self.statistics["Average Erbast Energy"].append(sum([erb.getEnergy() for erb in self.creatures["Erbast"]]) / len(self.creatures["Erbast"]) if len(self.creatures["Erbast"]) > 0 else 0)
+        self.statistics["Average Carviz Energy"].append(sum([carv.getEnergy() for carv in self.creatures["Carviz"]]) / len(self.creatures["Carviz"]) if len(self.creatures["Carviz"]) > 0 else 0)
+        self.statistics["Number of Dead Creatures"].append(len(self.deadCreatures))
+        self.statistics["Number of Hunts"].append(totHunts)
+        self.statistics["Successfull Hunts"].append(succesfulHunts)
+        self.statistics["Average Vegetob Density"].append(sum([cell.getVegetobDensity() for cell in self.world.grid.reshape(-1) if isinstance(cell, LandCell)]) / len([cell for cell in self.world.grid.reshape(-1) if isinstance(cell, LandCell)]))
+        self.statistics["Average Erbast Social Attitude"].append(sum([erb.getSocialAttitude() for erb in self.creatures["Erbast"]]) / len(self.creatures["Erbast"]) if len(self.creatures["Erbast"]) > 0 else 0)
+        self.statistics["Average Carviz Social Attitude"].append(sum([carv.getSocialAttitude() for carv in self.creatures["Carviz"]]) / len(self.creatures["Carviz"]) if len(self.creatures["Carviz"]) > 0 else 0)
 
     def getGrid(self) -> 'WorldGrid':
         return self.world.grid
@@ -287,6 +320,7 @@ class Environment:
 
     def fight(self, pride1:Pride, pride2:Pride) -> Pride:
         """ takes two prides, the two strongest individuals fight to death until no more individuals are present, returns the winning pride """
+
         p1Carvizes = sorted(pride1.getComponents(), key = lambda x : x.getEnergy())
         p2Carvizes = sorted(pride2.getComponents(), key = lambda x : x.getEnergy())
         while(len(p1Carvizes) > 0 and len(p2Carvizes) > 0):
@@ -389,6 +423,9 @@ class Environment:
         The Hunting method adopted is 'Last Blood' with a probability of success based on the difference in strength between the group and the victim and 3 attempts
         """
 
+        totHunts = 0
+        succesfulHunts = 0
+
         cellHunters = self.getCellSpeciesDict(self.getPrides() + self.getAloneCarviz())
         cellHerds = self.getCellSpeciesDict(self.getHerds())
         cellErbasts = self.getCellSpeciesDict(self.getAloneErbasts())
@@ -428,6 +465,8 @@ class Environment:
                 erbastLuck = random.randint(1,3)
                 huntProbability = self._hunt_probability(erbastEnergy, hunterStrength) * erbastLuck
 
+                totHunts += 1
+
                 while attempts < 5: # 5 assaults
 
                     if isinstance(hunter, Pride):
@@ -435,6 +474,8 @@ class Environment:
                         if random.random() < huntProbability: # Pride wins
                             self.creatureDeath(strongestErbast)
                             logging.info(f"{strongestErbast} has been killed by {hunter}")
+
+                            succesfulHunts += 1
 
                             # energy sharing
                             individualShare = (erbastEnergy // numPrideComponents) + 5
@@ -447,8 +488,9 @@ class Environment:
                             hungriestCarviz.changeEnergy(spareEnergy) 
 
                             if coords in cellHerds:
-                                if len(herd.getComponents()) > 1:
+                                if len(herd.getComponents()) > 1 and attempts < 4:
                                     strongestErbast = max(herd.getComponents(), key = lambda x : x.getEnergy())
+                                    totHunts += 1
                                 else:
                                     break
                             else:
@@ -465,12 +507,14 @@ class Environment:
                         
                         if random.random() < huntProbability: # death
                             self.creatureDeath(strongestErbast)
+                            succesfulHunts += 1
                             logging.info(f"{strongestErbast} has been killed by {hunter}")
                             hunter.changeEnergy(erbastEnergy)
                             hunter.socialAttitude -= 0.1
                             if coords in cellHerds:
-                                if len(herd.getComponents()) > 1:
+                                if len(herd.getComponents()) > 1 and attempts < 4:
                                     strongestErbast = max(herd.getComponents(), key = lambda x : x.getEnergy())
+                                    totHunts += 1
                                 else:
                                     break
                             else:
@@ -492,6 +536,8 @@ class Environment:
                 elif isinstance(hunter, Pride):
                     for carviz in hunter.getComponents():
                         logging.info(f"{carviz} in Pride at {coords} has energy: {carviz.getEnergy()}")
+
+        return totHunts, succesfulHunts
 
     def nextDay(self):
         """The days phase happens one after the other until the new day"""
@@ -587,7 +633,7 @@ class Environment:
 
         logging.info("HUNT PHASE\n")
 
-        self.hunt()
+        totHunts, succesfulHunts =  self.hunt()
 
         # 3.5 - SPAWNING -----------------------------------------------------------------------------------------------
 
@@ -615,6 +661,12 @@ class Environment:
             carviz_list = cell.getCarvizList()
             if carviz_list:
                 logging.info(f"LandCell {cell.getCoords()} has Carvizes: {carviz_list}")
+
+        self.computeStatistics(totHunts, succesfulHunts)
+
+        logging.warning(f"Statistics for day {self.day}:")
+        for stat, values in self.statistics.items():
+            logging.warning(f"{stat}: {values[-1]}")
 
         return self.getGrid()
     
