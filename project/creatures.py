@@ -635,8 +635,8 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
             
             # if there are too many individuals in the same cell they will probably die due to lack of resources
             tooManyIndividualsPenalty = 0
-            if self.numComponents > individualTolerance:
-                tooManyIndividualsPenalty = 6 * (1.5 - c.socialAttitude)
+            if len(self.getComponents()) > individualTolerance:
+                tooManyIndividualsPenalty = 10 * (1.5 - c.socialAttitude)
             
             maximumTolerance = (tooManyIndividualsPenalty - c.socialAttitude)
 
@@ -652,7 +652,7 @@ class SocialGroup(Species): # TODO what particular information may be stored by 
                     leavingIndividualsAndDirection[c] = individualDecidedCoords # get individual preferred movement
                     logging.info(f"{c} in {c.getCoords()}, differently from the group, wants to go at: {max(individualValues, key=individualValues.get)}")
 
-                    if len(leavingIndividualsAndDirection) == self.numComponents - 1:
+                    if len(leavingIndividualsAndDirection) == len(self.getComponents()) - 1:
                         logging.info(f"The group {self} disbanded, the individuals {self.getComponents()} are now free to go")
                         components = self.getComponents()
                         lastAnimal = [x for x in components if x not in leavingIndividualsAndDirection.keys()][0]

@@ -17,7 +17,7 @@ import traceback
 from datetime import datetime
 import os
 
-logging.basicConfig(level=logging.WARNING, 
+logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     filename='animation_debug.log',
                     filemode='w')
