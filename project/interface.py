@@ -15,7 +15,11 @@ from matplotlib.gridspec import GridSpec
 import logging
 import traceback
 from datetime import datetime
+import itertools
 import os
+import json
+import time
+
 
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -57,7 +61,15 @@ class Interface():
     }
     COLORS = (6/255, 32/255, 33/255, 0.8)
     FONT_COLOR = (234/255, 222/255, 204/255)
-    AXES_COLOR = (147/255, 91/255, 78/255)
+    AXES_COLOR = (147/255, 91/255, 78/255, 0.3)
+    CARVIZ_COLOR = (192/255, 17/255, 0)
+    ERBAST_COLOR = (216/255, 158/255, 146/255)
+    CARVIZ_TOMB = (255 / 255, 156/255, 36/255)
+    ERBAST_TOMB = (240/255, 255/255, 240/255)
+    HERD_COLOR = [201/255, 212/255, 135/255]
+    PRIDE_COLOR = [203/255, 77/255, 38/255]
+
+
     mpl.rcParams['figure.facecolor'] = COLORS
     mpl.rcParams['axes.facecolor'] = AXES_COLOR
     mpl.rcParams['text.color'] = FONT_COLOR
@@ -66,18 +78,19 @@ class Interface():
     mpl.rcParams['font.size'] = 11
     mpl.rcParams['font.weight'] = 'bold'
     mpl.rcParams['axes.titlesize'] = 16
+    mpl.rcParams['xtick.color'] = FONT_COLOR
+    mpl.rcParams['xtick.major.size'] = 1.0
+    mpl.rcParams['ytick.major.size'] = 1.0
+    mpl.rcParams['ytick.color'] = FONT_COLOR
+    mpl.rcParams['ytick.labelcolor'] = FONT_COLOR
+    mpl.rcParams['lines.linewidth'] = 1.5
 
-
-    WORLD_CONFIGS = {
-    "map1": {"seed": 1},
-    "map2": {"seed": 32},
-    "map3": {"seed": 24}
-    }
-
+    WORLD_CONFIGS = {}
+    CHOOSEN_MAPS = {}
     MAP_PATHS = "files//maps"
+    MAPS_FILE = "files//maps_file.json"
 
     def __init__(self):
-        
         # if not isinstance(env, Environment):
         #     raise TypeError(f"Expected env to be an instance of Environment, but got {type(env).__name__} instead.")
         
@@ -108,16 +121,91 @@ class Interface():
         self.old_tombs = set()
         self.button_pressed_play = False
         self.button_pressed_pause = False
+        self.stats_pressed = False
+
+    def env_params(self):
+        # getting the parameters
+        n_samples = 50
+        seeds = np.random.randint(1, 100, size=n_samples)
+        thresholds = np.random.uniform(0.01, 0.2, size=n_samples)
+        octaves_p = np.random.randint(1, 10, size=n_samples)
+        persistences = np.random.uniform(0.2, 0.5, size=n_samples)
+        lacunarities = np.random.uniform(1.2, 1.8, size=n_samples)
+        scales = np.random.randint(40, 60, size=n_samples)
+
+        # inserting the parameters in the dictionary
+        for i, seed in enumerate(seeds):
+            threshold = thresholds[i]
+            octaves = octaves_p[i]
+            persistence = persistences[i]
+            lacunarity = lacunarities[i]
+            scale = scales[i]
+
+            self.WORLD_CONFIGS[f"map{i+1}"] = {
+                "path" : f"{self.MAP_PATHS}//map_random_seed{seed}.png",
+                "seed": seed,
+                "threshold": threshold,
+                "octaves": octaves,
+                "persistence": persistence,
+                "lacunarity": lacunarity,
+                "scale": scale
+            }
+
+        self.save_to_file()
+        
+        return self.WORLD_CONFIGS
+
+    def save_to_file(self):
+        """Save map configurations to JSON file, handling NumPy data types"""
+        # Create a copy with standard Python types
+        print('pupu')
+        serializable_configs = {}
+        
+        for map_name, config in self.WORLD_CONFIGS.items():
+            serializable_configs[map_name] = {
+                "path" : config["path"],
+                "seed": int(config["seed"]),
+                "threshold": float(config["threshold"]),
+                "octaves": int(config["octaves"]),
+                "persistence": float(config["persistence"]),
+                "lacunarity": float(config["lacunarity"]),
+                "scale": int(config["scale"])
+            }
+
+        existing_configs = {}
+        if os.path.exists(self.MAPS_FILE):
+            with open(self.MAPS_FILE, 'r') as f:
+                try:
+                    existing_configs = json.load(f)
+                    print(existing_configs)
+                except json.JSONDecodeError:
+                    print("error")
+                    existing_configs = {}
+
+        existing_configs.update(serializable_configs)
+        
+        with open(self.MAPS_FILE, 'w') as f:
+            json.dump(existing_configs, f, indent=4)
+        
+        print(f"Added {len(serializable_configs)} new map configurations to {self.MAPS_FILE}")
+        print(f"Total configurations: {len(existing_configs)}")
+
+    def load_configs(self):
+        if os.path.exists(self.MAPS_FILE):
+            with open(self.MAPS_FILE, 'r') as f:
+                self.CHOOSEN_MAPS = json.load(f)
+            print(f"Loaded {len(self.CHOOSEN_MAPS)} map configurations from {self.MAPS_FILE}")
+        else:
+            print(f"No map configurations found in {self.MAPS_FILE}")
 
     def run_simulation(self):
         plt.ion() 
         self.start_menu()
         plt.show(block=True)
-        # for seed in range(1, 50):
-        #     self.set_environment(seed)
-            
+
 
     def start_menu(self):
+        self.load_configs()
         self.fig_menu = plt.figure(figsize=(8,8), dpi=100)
         self.fig_menu.set_facecolor(self.COLORS)
         
@@ -142,16 +230,18 @@ class Interface():
         ax_map2 = self.fig_menu.add_subplot(gs_menu[1, 1])
         ax_map3 = self.fig_menu.add_subplot(gs_menu[1, 2])
 
-        ax_map1.set_title("Map 1", fontweight='bold',  color=[253/255, 253/255, 198/255])
-        ax_map1.imshow(Image.open(f"{self.MAP_PATHS}//map_seed_{self.WORLD_CONFIGS['map1']['seed']}.png"))
+        map_names = list(self.CHOOSEN_MAPS.keys())
+    
+        ax_map1.set_title("Map 1")
+        ax_map1.imshow(Image.open(self.CHOOSEN_MAPS[map_names[0]]["path"]))
         ax_map1.axis('off')
 
-        ax_map2.set_title("Map 2", fontweight='bold',  color=[253/255, 253/255, 198/255])
-        ax_map2.imshow(Image.open(f"{self.MAP_PATHS}//map_seed_{self.WORLD_CONFIGS['map2']['seed']}.png"))
+        ax_map2.set_title("Map 2")  
+        ax_map2.imshow(Image.open(self.CHOOSEN_MAPS[map_names[1]]["path"]))
         ax_map2.axis('off')
 
-        ax_map3.set_title("Map 3", fontweight='bold',  color=[253/255, 253/255, 198/255])
-        ax_map3.imshow(Image.open(f"{self.MAP_PATHS}//map_seed_{self.WORLD_CONFIGS['map3']['seed']}.png"))
+        ax_map3.set_title("Map 3")
+        ax_map3.imshow(Image.open(self.CHOOSEN_MAPS[map_names[2]]["path"]))
         ax_map3.axis('off')
 
         self.fig_menu.canvas.mpl_connect('button_press_event', lambda event: self.choose_map(self.fig_menu, event))
@@ -164,30 +254,50 @@ class Interface():
         _, title, map1, map2, map3 = list(fig_menu.get_axes())
         
         if event.inaxes == title:
-                print('Title clicked')
+            print('Title clicked')
         elif event.inaxes == map1:
             print("map1 clicked")
-            self.selected_map = "map1"
-            seed = self.WORLD_CONFIGS[self.selected_map]["seed"]
-            self.set_environment(seed)
+            map_name = list(self.CHOOSEN_MAPS.keys())[0]
+            self.selected_map = map_name
+            self.set_params_env(map_name)
         elif event.inaxes == map2:
             print("map2 clicked")
-            self.selected_map = "map2"
-            seed = self.WORLD_CONFIGS[self.selected_map]["seed"]
-            self.set_environment(seed)
+            map_name = list(self.CHOOSEN_MAPS.keys())[1]
+            self.selected_map = map_name
+            self.set_params_env(map_name)
         elif event.inaxes == map3:
             print("map3 clicked")
-            self.selected_map = "map3"
-            seed = self.WORLD_CONFIGS[self.selected_map]["seed"]
-            self.set_environment(seed)
+            map_name = list(self.CHOOSEN_MAPS.keys())[2]
+            self.selected_map = map_name
+            self.set_params_env(map_name)
+
+    def set_params_env(self, map_name):
+        if map_name in self.CHOOSEN_MAPS:
+            config = self.CHOOSEN_MAPS[map_name]
+            seed = config["seed"]
+            threshold = config["threshold"]
+            octaves = config["octaves"]
+            persistence = config["persistence"]
+            lacunarity = config["lacunarity"]
+            scale = config["scale"]
+        else:
+            config = self.WORLD_CONFIGS[map_name]
+            seed = config["seed"]
+            threshold = config["threshold"]
+            octaves = config["octaves"]
+            persistence = config["persistence"]
+            lacunarity = config["lacunarity"]
+            scale = config["scale"]
+        
+        self.set_environment(threshold, seed, octaves, persistence, lacunarity, scale)
 
     def set_generation_type(self, type, nErb = 50, nCarv = 50):
         self.generation_type = type
         self.numErb = nErb
         self.numCarv = nCarv
 
-    def set_environment(self, seed):
-        environment = Environment(seed=seed)
+    def set_environment(self, thr, seed, octv, per, lacu, scl):
+        environment = Environment(threshold=thr, seed=seed, octaves=octv, persistence=per, lacunarity=lacu, scale=scl, dynamic=True)
         self.env = environment
         self.grid = self.gridToRGB(environment.getGrid(), save=True, seed=seed)
         # self.initialize_population(environment, type="random", nErb=100, nCarv=100)
@@ -283,17 +393,16 @@ class Interface():
         if self._fig_map is None:
             self._fig_map = plt.figure(figsize=(10, 10), dpi=100)
             self._fig_map.set_facecolor(self.COLORS)
-            self.gs_map = GridSpec(2, 2, height_ratios=[5, 1], width_ratios=[6, 1], figure=self._fig_map)
+            self.gs_map = GridSpec(2, 2, height_ratios=[5, 1], width_ratios=[6, 1.5], figure=self._fig_map)
             
             self.ax_plot = self._fig_map.add_subplot(self.gs_map[0, 0])
             # self.ax_plot.set_aspect('auto', adjustable='box')
             self.ax_plot.axis('off')
             self.welcome_plot = self._fig_map.add_subplot(self.gs_map[0, 1])
-            self.welcome_plot.text(-1.0, 0.5, 
-                                   f'Click on any cell\nto know more information', va='center', ha='center',
-                                   fontdict={'fontsize': 12, 'fontweight': 'bold', 'color': [234/255, 222/255, 204/255]})
+            self.welcome_plot.set_title("Click on any cell\nto know more information", loc='center', fontsize=11, weight='bold')
+            self.welcome_plot.imshow(Image.open("files//labels_animals.png"))
             self.welcome_plot.axis('off')
-            self._fig_map.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.08, wspace=0.5, hspace=0.05)
+            self._fig_map.subplots_adjust(left=0.02, right=0.8, top=0.98, bottom=0.08, wspace=0.5, hspace=0.05)
             # self._fig_map.tight_layout(pad=1.0)
             self._fig_map.canvas.manager.set_window_title("Planisuss World")
             self.setup_controls()
@@ -396,9 +505,9 @@ class Interface():
         else:
             logger.debug(f"Creating new artist for living animal {animal}")
             if isinstance(animal, Erbast):
-                color = [216 / 255, 158 / 255, 146 / 255]
+                color = self.ERBAST_COLOR
             else:
-                color = [139 / 255, 0 / 255, 0 / 255]
+                color = self.CARVIZ_COLOR
             
             new_artist = Circle((y + shift_y, x + shift_x), radius=0.1, color=color, alpha=1)
             self.ax_plot.add_artist(new_artist)
@@ -411,9 +520,9 @@ class Interface():
         
         if remove is False:
             if isinstance(animal, Carviz):
-                color = [253 / 255, 174 / 255, 69 / 255]
+                color = self.CARVIZ_TOMB
             else:
-                color = [240 / 255, 255 / 255, 240 / 255]
+                color = self.ERBAST_TOMB
             new_artist = Rectangle(xy=(y + shift_y, x + shift_x), 
                                 width=0.2, height=0.2, 
                                 color=color, fill=True, alpha=1)
@@ -525,7 +634,21 @@ class Interface():
                 self.display_tombs()
         elif event.inaxes == self.ax_stats:
             print('Stats clicked')
-            self.show_stats()
+            self.pause_animation()
+            self.stats_pressed = True
+            if self.stats_pressed:
+                self.ax_stats.imshow(Image.open("files//stats_clicked.png"))
+            else:
+                self.ax_stats.imshow(Image.open("files//stats.png"))
+            if self.currentDay < 4:
+                    show_f = False
+                    self.show_stats(show_f)
+                    self.stats_pressed = False
+                    self.ax_stats.imshow(Image.open("files//stats.png"))
+                    self.start()
+            else:
+                show_f = True    
+                self.show_stats(show_f)
         else:
             print('Stop clicked')
             if not self.button_pressed_pause:
@@ -539,10 +662,190 @@ class Interface():
                 self.button_pressed_play = False
             self.pause_animation()
             
-    def show_stats(self):
-        fig_stats = plt.figure(figsize=(8, 8), dpi=100)
+    def show_stats(self, show_f=True):
+        stats = self.env.statistics
+        was_running = self.anim_running
+        # print(was_running)
+
+        def ticks_format(days, ax):
+            if len(days) >= 10:
+                if len(days) >= 200:
+                    ticks = [d for d in days if d % 100 == 0]
+                elif len(days) >= 100:
+                    ticks = [d for d in days if d % 50 == 0]
+                elif len(days) >= 50:
+                    ticks = [d for d in days if d % 20 == 0]
+                elif len(days) >= 20:
+                    ticks = [d for d in days if d % 10 == 0]
+                else: 
+                    ticks = [d for d in days if d % 5 == 0]
+                    
+                if days[0] not in ticks:
+                    ticks.insert(0, days[0])
+                if days[-1] not in ticks:
+                    ticks.append(days[-1])
+
+                ax.set_xticks(ticks)
+            else:
+                ax.set_xticks(days)
+
+        fig_stats = plt.figure(figsize=(15, 12), dpi=100)
+        if not show_f:
+            fig_stats.suptitle("Not enough days to show stats", fontsize=16)
+            timer = fig_stats.canvas.new_timer(interval=3000)
+            timer.add_callback(lambda: plt.close(fig_stats))
+            timer.start()
+            fig_stats.show()
+
+            return
+        
+        days = [0] + list(range(1, self.currentDay+1))
+        
+        if len(days) < 3:
+            print("Not enough days to show stats")
+
+        ax1 = fig_stats.add_subplot(3, 3, 1)
+        ax1.plot(days, stats["Number of Erbasts"], label="Erbast", color=self.ERBAST_COLOR)
+        ax1.plot(days, stats["Number of Carvizes"], label="Carviz", color=self.CARVIZ_COLOR)
+        ax1.set_title("Population dynamics", fontsize=10, color=self.FONT_COLOR)
+        ax1.set_xlabel("Days", fontsize=8, color=self.FONT_COLOR)
+        ticks_format(days, ax1)
+        # ax1.set_xticks(days)
+        ax1.set_ylabel("Population", fontsize=8, color=self.FONT_COLOR)
+        ax1.legend(fontsize=6)
+        ax1.grid(True, alpha=0.3)
+
+        ax2 = fig_stats.add_subplot(3, 3, 2)
+        ax2.grid(True, alpha=0.3)
+        erb_change = [stats["Number of Erbasts"][i+1] - stats["Number of Erbasts"][i] 
+                 for i in range(len(days)-1)]
+        carv_change = [stats["Number of Carvizes"][i+1] - stats["Number of Carvizes"][i] 
+                  for i in range(len(days)-1)]
+        growth_diff = [erb - carv for erb, carv in zip(erb_change, carv_change)]
+        ax2.plot(days[1:], erb_change, label="Erbast", color=self.ERBAST_COLOR)
+        ax2.plot(days[1:], carv_change, label="Carviz", color=self.CARVIZ_COLOR)
+
+        ax2b = ax2.twinx()
+        ax2b.bar(days[1:], growth_diff, color=[173/255, 142/255, 139/255], alpha=0.5, label="Growth difference")
+        ax2b.axhline(0, color=self.FONT_COLOR, linestyle='--', alpha=0.5)
+        ax2.set_title("Population Growth Rates", fontsize=10, color=self.FONT_COLOR)
+        ax2.set_xlabel("Days", fontsize=8, color=self.FONT_COLOR)
+        ticks_format(days, ax2)
+        # ax2.set_xticks(days)
+        ax2.set_ylabel("Daily Population Change", fontsize=8, color=self.FONT_COLOR)
+        ax2b.set_ylabel("Growth Difference (Erb-Carv)", fontsize=8, color=self.FONT_COLOR)
+        ax2.legend(loc='upper left', fontsize=6)
+        ax2b.legend(loc='upper right', fontsize=6)
+
+        # Plotting gorup size and social attitude
+        ax3 = fig_stats.add_subplot(3, 3, 3)
+        ax3.grid(True, alpha=0.3)
+        ticks_format(days, ax3)
+        #  ax3.set_xticks(days)
+        ax3.set_xlabel("Days", fontsize=8, color=self.FONT_COLOR)
+        ax3.plot(days, stats["Number of Herds"], label="Herd", color=self.HERD_COLOR)
+        ax3.plot(days, stats["Number of Prides"], label="Pride", color=self.PRIDE_COLOR)
+        ax3.set_ylabel("Number of Groups", fontsize=8, color=self.FONT_COLOR)
+        ax3.legend(loc='upper left', fontsize=6)
+        ax3.set_title("Group Dynamics", fontsize=10, color=self.FONT_COLOR)
+        ax3b = ax3.twinx()
+        ax3b.plot(days, stats["Average Erbast Social Attitude"], label="Avg Erbast Social Attitude", color=self.HERD_COLOR, linestyle='--')
+        ax3b.plot(days, stats["Average Carviz Social Attitude"], label="Avg Carviz Social Attitude", color=self.PRIDE_COLOR, linestyle='--')
+        ax3b.set_ylabel("Average Social Attitude", color=self.FONT_COLOR, fontsize=8)
+        ax3b.legend(loc='upper right', fontsize=6)
+
+        # Plotting average herd sizes
+        ax4 = fig_stats.add_subplot(3, 3, 4)
+        ax4.grid(True, alpha=0.3)
+        ticks_format(days, ax4)
+        # ax4.set_xticks(days)
+        ax4.set_xlabel("Days", fontsize=8, color=self.FONT_COLOR)
+        ax4.set_ylabel("Average Group Size", fontsize=8, color=self.FONT_COLOR)
+        ax4.set_title("Average Group Sizes", fontsize=10, color=self.FONT_COLOR)
+        ax4.plot(days, stats["Average Herd Size"], color=[204/255, 212/255, 158/255], label="Avg Herd Group Size")
+        ax4.plot(days, stats["Average Pride Size"], color=[203/255, 169/255, 159/255], label="Avg Pride Group Size")
+        ax4.legend(fontsize=6)
+
+        # Plotting energy levels and vegetob density (Resources and Energy)
+        ax5 = fig_stats.add_subplot(3, 3, 5)
+        ax5.grid(True, alpha=0.3)
+        ticks_format(days, ax5)
+        # ax5.set_xticks(days)
+        ax5.set_xlabel("Days", fontsize=8, color=self.FONT_COLOR)
+        ax5.set_ylabel("Energy Levels", fontsize=8, color=self.FONT_COLOR)
+        ax5.set_title("Energy Levels and Resources", fontsize=10, color=self.FONT_COLOR)
+        ax5.plot(days, stats["Average Erbast Energy"], label="Avg Erbast Energy", color=self.ERBAST_COLOR)
+        ax5.plot(days, stats["Average Carviz Energy"], label="Avg Carviz Energy", color=self.CARVIZ_COLOR)
+        ax5.legend(fontsize=6)
+        
+        ax5b = ax5.twinx()
+        ax5b.plot(days, stats["Average Vegetob Density"], label="Avg Vegetob Density", color=[0, 0.5, 0], linestyle='--')
+        ax5b.set_ylabel("Average Vegetob Density", fontsize=8, color=self.FONT_COLOR)
+        ax5b.legend(loc='lower left', fontsize=6)
+
+        # Pred - Prey ratio
+        ax6 = fig_stats.add_subplot(3, 3, 6)
+        ax6.grid(True, alpha=0.3)
+        ticks_format(days, ax6)
+        # ax6.set_xticks(days)
+        ax6.set_xlabel("Days", fontsize=8, color=self.FONT_COLOR)
+        ax6.set_ylabel("Predator-Prey Ratio", fontsize=8, color=self.FONT_COLOR)
+        ax6.set_title("Predator-Prey Ratio", fontsize=10, color=self.FONT_COLOR)
+        pred_prey_ratio = [car / erb if erb > 0 else 0 
+                           for erb, car in zip(stats["Number of Erbasts"], stats["Number of Carvizes"])]
+        ax6.plot(days, pred_prey_ratio, label="Predator-Prey Ratio", color=[247/255, 179/255, 204/255])
+        ax6.legend(fontsize=6)
+
+        # Hunting Metrics
+        ax7 = fig_stats.add_subplot(3, 3, 7)
+        ax7.grid(True, alpha=0.3)
+        ticks_format(days, ax7)
+        # ax7.set_xticks(days)
+        ax7.set_xlabel("Days", fontsize=8, color=self.FONT_COLOR)
+        ax7.set_ylabel("Number of Hunts", fontsize=8, color=self.FONT_COLOR)
+        ax7.set_title("Number of Hunts & Successfulf Hunts", fontsize=10, color=self.FONT_COLOR)
+        ax7.plot(days, stats["Number of Hunts"], label="N of Hunts", color=[235/255, 220/255, 251/255])
+        ax7.plot(days, stats["Successfull Hunts"], label="N of Successfull Hunts", color=[232/255, 129/255, 112/255])
+        ax7.legend(loc='lower left', fontsize=6)
+
+        # success rate
+        ax7b = ax7.twinx()
+        success_rate = [succ_h / num_h if num_h > 0 else 0 
+                        for succ_h, num_h in zip(stats["Successfull Hunts"], stats["Number of Hunts"])]
+        ax7b.plot(days, success_rate, label="Success Rate", color=[132/255, 185/255, 191/255], linestyle='--')
+        ax7b.set_ylabel("Success Rate", fontsize=8, color=self.FONT_COLOR)
+        ax7b.legend(loc='lower right',fontsize=6)
+    
+        # Deaths
+        ax8 = fig_stats.add_subplot(3, 3, 8)
+        ax8.grid(True, alpha=0.3)
+        ticks_format(days, ax8)
+        # ax8.set_xticks(days)
+        ax8.set_xlabel("Days", fontsize=8, color=self.FONT_COLOR)
+        ax8.set_ylabel("Deaths", fontsize=8, color=self.FONT_COLOR)
+        ax8.set_title("Deaths", fontsize=10, color=self.FONT_COLOR)
+        ax8.plot(days, stats["Number of Dead Creatures"], label="Deaths", color=[243/255, 230/255, 185/255])
+        ax8.legend(fontsize=6)
+
+        def on_close(event):
+            if not was_running:
+                self.stats_pressed = False
+                self.ax_stats.imshow(Image.open("files//stats.png"))
+                self.start()
 
         
+        fig_stats.canvas.mpl_connect('close_event', on_close)
+        fig_stats.subplots_adjust(
+            left=0.1,            
+            right=0.9,           
+            top=0.95,           
+            bottom=0.05,         
+            wspace=0.5,          
+            hspace=0.4 
+            )          
+        # fig_stats.tight_layout()
+        fig_stats.show()
+
     def gridToRGB(self, grid, save=False, seed=None):
         """ This method translates the environment grid to an RGB matric for visualization"""
         # in future this will be way more complex
@@ -565,7 +868,7 @@ class Interface():
         self.apply_filter(gradient_water, base_color_water, water_mask, grid_rgb)
         
         if save and seed is not None:
-            filepath = f"files//maps//map_seed_{seed}.png"
+            filepath = f"{self.MAP_PATHS}//map_random_seed{seed}.png"
         
             if not os.path.exists(filepath):
                 img = Image.fromarray(grid_rgb)
@@ -608,6 +911,7 @@ class Interface():
         self.img = self.ax_plot.imshow(initial_grid, interpolation='nearest')
         self.draw_elements(initial_grid, day=0)
         self.day_text.set_text(f'Day 0')
+
         # plt.pause(0.1)
         return self.img
 
@@ -624,7 +928,7 @@ class Interface():
     def faster_animation(self):
         if self.anim_running:
             self.ani.event_source.stop()
-            self.ani.event_source.interval = 20
+            self.ani.event_source.interval = 1
             self.ani.event_source.start()
             self.faster = True
     
@@ -713,7 +1017,7 @@ class Interface():
             t = f"Carviz in cell"
         else:
             t = f"Dead animals in cell"
-        ax_title.text(0.3, 0.3, t, ha='center')
+        ax_title.text(0.3, 0.3, t, ha='center', fontsize=12)
         ax_title.axis('off')
 
         if erbast and empty:
@@ -728,7 +1032,8 @@ class Interface():
         for i in range(n):
             ax = fig.add_subplot(gs[start_row + 1 + i, 0])
             if empty:
-                ax.text(0.3, 0.3, f"{s_empty}", ha='center', bbox=dict(facecolor=self.AXES_COLOR, edgecolor='black', boxstyle='round'))
+                ax.text(0.3, 0.3, f"{s_empty}", ha='center', 
+                        fontsize=8, bbox=dict(facecolor=self.AXES_COLOR, edgecolor='black', boxstyle='round'))
                 individuals_axis.append((ax, None))
             else:
                 animal = list_animals[i]
@@ -738,7 +1043,8 @@ class Interface():
                     s = f"Carviz{str(animal.id)}"
                 else:
                     s = f"Dead animal {str(animal.old_species)}{str(animal.id)}"
-                ax.text(0.3, 0.3, f"{s}", ha='center', bbox=dict(facecolor=self.AXES_COLOR, edgecolor='black', boxstyle='round'))
+                ax.text(0.3, 0.2, f"{s}", ha='center', 
+                        fontsize=8, bbox=dict(facecolor=self.AXES_COLOR, edgecolor='black', boxstyle='round'))
                 individuals_axis.append((ax, list_animals[i]))
 
             ax.axis('off')

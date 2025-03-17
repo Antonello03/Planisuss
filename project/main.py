@@ -98,7 +98,7 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
 
 def simulation():
     animation = Interface()
-    animation.set_generation_type("random", 200, 50)
+    # set_generation_type("random", 200, 50)
     animation.run_simulation()
 
 if __name__ == "__main__":

@@ -18,8 +18,8 @@ class Environment:
     Each living being and the worldGrid itself is contained here and the inizialization
     and update logic of the world is managed by the following functions
     """
-    def __init__(self, seed=None):
-        self.world = WorldGrid(seed=seed)
+    def __init__(self, threshold=0.2, seed=None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=False):
+        self.world = WorldGrid(threshold=threshold, seed=seed, octaves=octaves, persistence=persistence, lacunarity=lacunarity, scale=scale, dynamic=dynamic)
         self.creatures = {
             "Erbast" : [],
             "Carviz" : []
@@ -714,19 +714,17 @@ class WorldGrid():
                 
         return grid
 
-    def __init__(self, type = "fbm", threshold = 0.2, seed=None):
-        self.grid = self.createWorld(type, threshold, seed)
+    def __init__(self, type = "fbm", threshold = 0.2, seed=None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=True):
+        self.grid = self.createWorld(type, threshold, seed, octaves, persistence, lacunarity, scale)
     # so that we can crate different types of initial setups
-    def createWorld(self, typology = "fbm", threshold = 0.2, seed=None):
+    def createWorld(self, typology = "fbm", threshold = 0.2, seed=None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=True):
         """
         Initialize the world
         Vegetob density starts at around 25
         """
-        if seed:
-            random.seed(seed)
         
         if typology == "fbm":
-            values_grid = self.__fbmNoise(NUMCELLS, threshold, seed=seed, dynamic=True)
+            values_grid = self.__fbmNoise(NUMCELLS, threshold, seed=seed, octaves=octaves, persistence=persistence, lacunarity=lacunarity, scale=scale, dynamic=dynamic)
             grid = np.zeros((NUMCELLS, NUMCELLS), dtype=object)
             for i in range(NUMCELLS):
                 for j in range(NUMCELLS):

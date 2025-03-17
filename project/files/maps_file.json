@@ -1,0 +1,445 @@
+{
+    "map1": {
+        "path": "files//maps//map_random_seed28.png",
+        "seed": 28,
+        "threshold": 0.15696466890080785,
+        "octaves": 2,
+        "persistence": 0.49232515450524184,
+        "lacunarity": 1.6072135747915326,
+        "scale": 56
+    },
+    "map2": {
+        "path": "files//maps//map_random_seed75.png",
+        "seed": 75,
+        "threshold": 0.15733143410861955,
+        "octaves": 1,
+        "persistence": 0.24461008896234113,
+        "lacunarity": 1.3599446257279568,
+        "scale": 48
+    },
+    "map3": {
+        "path": "files//maps//map_random_seed98.png",
+        "seed": 98,
+        "threshold": 0.13343590458977608,
+        "octaves": 8,
+        "persistence": 0.20358385618906827,
+        "lacunarity": 1.7229807280020932,
+        "scale": 57
+    },
+    "map4": {
+        "path": "files//maps//map_random_seed27.png",
+        "seed": 27,
+        "threshold": 0.15160969604523594,
+        "octaves": 8,
+        "persistence": 0.39308256731995306,
+        "lacunarity": 1.732434030523138,
+        "scale": 55
+    },
+    "map5": {
+        "path": "files//maps//map_random_seed6.png",
+        "seed": 6,
+        "threshold": 0.054698391370570934,
+        "octaves": 4,
+        "persistence": 0.38290971880649227,
+        "lacunarity": 1.5806190245910023,
+        "scale": 55
+    },
+    "map6": {
+        "path": "files//maps//map_random_seed58.png",
+        "seed": 58,
+        "threshold": 0.16676893239258392,
+        "octaves": 3,
+        "persistence": 0.23136558569567844,
+        "lacunarity": 1.6273263025619893,
+        "scale": 57
+    },
+    "map7": {
+        "path": "files//maps//map_random_seed83.png",
+        "seed": 83,
+        "threshold": 0.12591923156357268,
+        "octaves": 3,
+        "persistence": 0.3932717959952823,
+        "lacunarity": 1.5586777302032988,
+        "scale": 48
+    },
+    "map8": {
+        "path": "files//maps//map_random_seed29.png",
+        "seed": 29,
+        "threshold": 0.11736697276795904,
+        "octaves": 1,
+        "persistence": 0.48969422587947364,
+        "lacunarity": 1.3526272030651796,
+        "scale": 59
+    },
+    "map9": {
+        "path": "files//maps//map_random_seed71.png",
+        "seed": 71,
+        "threshold": 0.05302613489954371,
+        "octaves": 6,
+        "persistence": 0.48172389316234554,
+        "lacunarity": 1.7432322994184448,
+        "scale": 57
+    },
+    "map10": {
+        "path": "files//maps//map_random_seed16.png",
+        "seed": 16,
+        "threshold": 0.028250130366532213,
+        "octaves": 5,
+        "persistence": 0.3762311062286657,
+        "lacunarity": 1.692936918469214,
+        "scale": 56
+    },
+    "map11": {
+        "path": "files//maps//map_random_seed7.png",
+        "seed": 7,
+        "threshold": 0.09843511816505704,
+        "octaves": 1,
+        "persistence": 0.34007082625391205,
+        "lacunarity": 1.7825530210598264,
+        "scale": 43
+    },
+    "map12": {
+        "path": "files//maps//map_random_seed54.png",
+        "seed": 54,
+        "threshold": 0.1845987221069694,
+        "octaves": 1,
+        "persistence": 0.20596739107117404,
+        "lacunarity": 1.6274992714045675,
+        "scale": 40
+    },
+    "map13": {
+        "path": "files//maps//map_random_seed88.png",
+        "seed": 88,
+        "threshold": 0.18891691452006018,
+        "octaves": 4,
+        "persistence": 0.4449613083821481,
+        "lacunarity": 1.7630759084463667,
+        "scale": 57
+    },
+    "map14": {
+        "path": "files//maps//map_random_seed55.png",
+        "seed": 55,
+        "threshold": 0.1919024677366822,
+        "octaves": 3,
+        "persistence": 0.44827621964823827,
+        "lacunarity": 1.7744787185347306,
+        "scale": 59
+    },
+    "map15": {
+        "path": "files//maps//map_random_seed38.png",
+        "seed": 38,
+        "threshold": 0.19605630319758305,
+        "octaves": 9,
+        "persistence": 0.4390831277014841,
+        "lacunarity": 1.4128364887667288,
+        "scale": 40
+    },
+    "map16": {
+        "path": "files//maps//map_random_seed22.png",
+        "seed": 22,
+        "threshold": 0.02535949220445971,
+        "octaves": 4,
+        "persistence": 0.28564912218777133,
+        "lacunarity": 1.5762559571061772,
+        "scale": 48
+    },
+    "map17": {
+        "path": "files//maps//map_random_seed11.png",
+        "seed": 11,
+        "threshold": 0.08031621240412466,
+        "octaves": 8,
+        "persistence": 0.4685191417408929,
+        "lacunarity": 1.5554802403905352,
+        "scale": 49
+    },
+    "map18": {
+        "path": "files//maps//map_random_seed30.png",
+        "seed": 30,
+        "threshold": 0.03739992801908388,
+        "octaves": 4,
+        "persistence": 0.4758618270836752,
+        "lacunarity": 1.4013640947243364,
+        "scale": 46
+    },
+    "map19": {
+        "path": "files//maps//map_random_seed3.png",
+        "seed": 3,
+        "threshold": 0.03961795263216968,
+        "octaves": 4,
+        "persistence": 0.39564476603385157,
+        "lacunarity": 1.76996817272087,
+        "scale": 46
+    },
+    "map20": {
+        "path": "files//maps//map_random_seed63.png",
+        "seed": 63,
+        "threshold": 0.05868826321639423,
+        "octaves": 6,
+        "persistence": 0.3372787317172816,
+        "lacunarity": 1.4878960800236434,
+        "scale": 48
+    },
+    "map21": {
+        "path": "files//maps//map_random_seed54.png",
+        "seed": 54,
+        "threshold": 0.07135157991756702,
+        "octaves": 7,
+        "persistence": 0.451092723199403,
+        "lacunarity": 1.4771529148742375,
+        "scale": 52
+    },
+    "map22": {
+        "path": "files//maps//map_random_seed39.png",
+        "seed": 39,
+        "threshold": 0.18819897650046896,
+        "octaves": 3,
+        "persistence": 0.46813045202790765,
+        "lacunarity": 1.7367257218629408,
+        "scale": 57
+    },
+    "map23": {
+        "path": "files//maps//map_random_seed98.png",
+        "seed": 98,
+        "threshold": 0.1664714353224224,
+        "octaves": 7,
+        "persistence": 0.40794478801587086,
+        "lacunarity": 1.4295477596403923,
+        "scale": 53
+    },
+    "map24": {
+        "path": "files//maps//map_random_seed89.png",
+        "seed": 89,
+        "threshold": 0.12050422963613794,
+        "octaves": 7,
+        "persistence": 0.20820033795299622,
+        "lacunarity": 1.7230050075097538,
+        "scale": 44
+    },
+    "map25": {
+        "path": "files//maps//map_random_seed33.png",
+        "seed": 33,
+        "threshold": 0.041183791175169335,
+        "octaves": 1,
+        "persistence": 0.4338413000288812,
+        "lacunarity": 1.4795816709566645,
+        "scale": 52
+    },
+    "map26": {
+        "path": "files//maps//map_random_seed45.png",
+        "seed": 45,
+        "threshold": 0.16867195368013863,
+        "octaves": 8,
+        "persistence": 0.4095342816922678,
+        "lacunarity": 1.7699032021097376,
+        "scale": 50
+    },
+    "map27": {
+        "path": "files//maps//map_random_seed90.png",
+        "seed": 90,
+        "threshold": 0.03217330327119755,
+        "octaves": 6,
+        "persistence": 0.2417021493755931,
+        "lacunarity": 1.5015344381262765,
+        "scale": 47
+    },
+    "map28": {
+        "path": "files//maps//map_random_seed31.png",
+        "seed": 31,
+        "threshold": 0.17874597757499122,
+        "octaves": 8,
+        "persistence": 0.43798374936829,
+        "lacunarity": 1.79945977517243,
+        "scale": 58
+    },
+    "map29": {
+        "path": "files//maps//map_random_seed7.png",
+        "seed": 7,
+        "threshold": 0.1898918353876729,
+        "octaves": 3,
+        "persistence": 0.4454261832570289,
+        "lacunarity": 1.2426786986421807,
+        "scale": 57
+    },
+    "map30": {
+        "path": "files//maps//map_random_seed31.png",
+        "seed": 31,
+        "threshold": 0.1775062160674748,
+        "octaves": 5,
+        "persistence": 0.381384342427519,
+        "lacunarity": 1.4337708403333647,
+        "scale": 42
+    },
+    "map31": {
+        "path": "files//maps//map_random_seed97.png",
+        "seed": 97,
+        "threshold": 0.11016742022697226,
+        "octaves": 6,
+        "persistence": 0.33847787214763203,
+        "lacunarity": 1.6364103675217705,
+        "scale": 40
+    },
+    "map32": {
+        "path": "files//maps//map_random_seed23.png",
+        "seed": 23,
+        "threshold": 0.04276971655856255,
+        "octaves": 3,
+        "persistence": 0.3659805815394418,
+        "lacunarity": 1.4949369318043397,
+        "scale": 50
+    },
+    "map33": {
+        "path": "files//maps//map_random_seed54.png",
+        "seed": 54,
+        "threshold": 0.049140546147719705,
+        "octaves": 2,
+        "persistence": 0.4430083877054277,
+        "lacunarity": 1.2708796512765808,
+        "scale": 47
+    },
+    "map34": {
+        "path": "files//maps//map_random_seed1.png",
+        "seed": 1,
+        "threshold": 0.1754707032567322,
+        "octaves": 3,
+        "persistence": 0.4750710651490156,
+        "lacunarity": 1.5882145559430643,
+        "scale": 57
+    },
+    "map35": {
+        "path": "files//maps//map_random_seed38.png",
+        "seed": 38,
+        "threshold": 0.1217705470139695,
+        "octaves": 5,
+        "persistence": 0.33408156547918255,
+        "lacunarity": 1.3627756401286217,
+        "scale": 50
+    },
+    "map36": {
+        "path": "files//maps//map_random_seed81.png",
+        "seed": 81,
+        "threshold": 0.09825765351380668,
+        "octaves": 2,
+        "persistence": 0.22293149294413028,
+        "lacunarity": 1.2288256477665738,
+        "scale": 52
+    },
+    "map37": {
+        "path": "files//maps//map_random_seed93.png",
+        "seed": 93,
+        "threshold": 0.01658822764560513,
+        "octaves": 3,
+        "persistence": 0.4021746542326332,
+        "lacunarity": 1.3943809376571124,
+        "scale": 47
+    },
+    "map38": {
+        "path": "files//maps//map_random_seed45.png",
+        "seed": 45,
+        "threshold": 0.19955263301447373,
+        "octaves": 2,
+        "persistence": 0.3204245095011868,
+        "lacunarity": 1.5665555876722579,
+        "scale": 44
+    },
+    "map39": {
+        "path": "files//maps//map_random_seed63.png",
+        "seed": 63,
+        "threshold": 0.0870561440449184,
+        "octaves": 5,
+        "persistence": 0.48389471512836824,
+        "lacunarity": 1.6870986688839258,
+        "scale": 42
+    },
+    "map40": {
+        "path": "files//maps//map_random_seed70.png",
+        "seed": 70,
+        "threshold": 0.0719390131328296,
+        "octaves": 2,
+        "persistence": 0.3454889499224285,
+        "lacunarity": 1.2832445718914516,
+        "scale": 42
+    },
+    "map41": {
+        "path": "files//maps//map_random_seed22.png",
+        "seed": 22,
+        "threshold": 0.10601163471152839,
+        "octaves": 9,
+        "persistence": 0.4302234897217438,
+        "lacunarity": 1.6480702953861432,
+        "scale": 40
+    },
+    "map42": {
+        "path": "files//maps//map_random_seed34.png",
+        "seed": 34,
+        "threshold": 0.07976543033362905,
+        "octaves": 6,
+        "persistence": 0.2476735601464935,
+        "lacunarity": 1.5511337538395498,
+        "scale": 40
+    },
+    "map43": {
+        "path": "files//maps//map_random_seed33.png",
+        "seed": 33,
+        "threshold": 0.02693471165962965,
+        "octaves": 5,
+        "persistence": 0.23907693751581593,
+        "lacunarity": 1.3474638576617075,
+        "scale": 53
+    },
+    "map44": {
+        "path": "files//maps//map_random_seed95.png",
+        "seed": 95,
+        "threshold": 0.1941096151265987,
+        "octaves": 5,
+        "persistence": 0.43892123409334616,
+        "lacunarity": 1.5554523242800489,
+        "scale": 48
+    },
+    "map45": {
+        "path": "files//maps//map_random_seed92.png",
+        "seed": 92,
+        "threshold": 0.1921614554891949,
+        "octaves": 7,
+        "persistence": 0.3153539486503122,
+        "lacunarity": 1.791518990441253,
+        "scale": 56
+    },
+    "map46": {
+        "path": "files//maps//map_random_seed91.png",
+        "seed": 91,
+        "threshold": 0.11446732606282209,
+        "octaves": 5,
+        "persistence": 0.3924449359063301,
+        "lacunarity": 1.796394142016981,
+        "scale": 42
+    },
+
+    "map48": {
+        "path": "files//maps//map_random_seed80.png",
+        "seed": 80,
+        "threshold": 0.06555903528078304,
+        "octaves": 5,
+        "persistence": 0.3993804376033904,
+        "lacunarity": 1.7819851948450078,
+        "scale": 54
+    },
+    "map49": {
+        "path": "files//maps//map_random_seed31.png",
+        "seed": 31,
+        "threshold": 0.024894044162054606,
+        "octaves": 3,
+        "persistence": 0.392056116986675,
+        "lacunarity": 1.236704808259327,
+        "scale": 41
+    },
+    "map50": {
+        "path": "files//maps//map_random_seed98.png",
+        "seed": 98,
+        "threshold": 0.01992907951505893,
+        "octaves": 8,
+        "persistence": 0.36886071155123257,
+        "lacunarity": 1.5823301163969203,
+        "scale": 45
+    }
+}
+
