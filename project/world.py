@@ -677,7 +677,7 @@ class WorldGrid():
     """
     def __fbmNoise(self, n, threshold = 0.2, seed = None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=False):
         """ Method to generate island like maps. Returns a numpy grid of zeros and 255 """
-        print(dynamic)
+        # print(dynamic)
         if seed is None:
             seed = random.randint(0, 100)
         
