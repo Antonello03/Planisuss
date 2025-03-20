@@ -677,6 +677,7 @@ class WorldGrid():
     """
     def __fbmNoise(self, n, threshold = 0.2, seed = None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=False):
         """ Method to generate island like maps. Returns a numpy grid of zeros and 255 """
+        print(dynamic)
         if seed is None:
             seed = random.randint(0, 100)
         
@@ -714,10 +715,10 @@ class WorldGrid():
                 
         return grid
 
-    def __init__(self, type = "fbm", threshold = 0.2, seed=None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=True):
-        self.grid = self.createWorld(type, threshold, seed, octaves, persistence, lacunarity, scale)
+    def __init__(self, type = "fbm", threshold = 0.2, seed=None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=False):
+        self.grid = self.createWorld(type, threshold, seed, octaves, persistence, lacunarity, scale, dynamic)
     # so that we can crate different types of initial setups
-    def createWorld(self, typology = "fbm", threshold = 0.2, seed=None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=True):
+    def createWorld(self, typology = "fbm", threshold = 0.2, seed=None, octaves=8, persistence=0.4, lacunarity=1.8, scale=40.0, dynamic=False):
         """
         Initialize the world
         Vegetob density starts at around 25

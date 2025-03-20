@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>&ast;&ast;Planisuss&ast;&ast;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+/* From extension bierner.markdown-checkbox */
+.contains-task-list {
+    padding-left: 0;
+}
+
+.contains-task-list li {
+    margin-left: 24px;
+}
+
+.contains-task-list .task-list-item {
+    list-style: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+.contains-task-list .contains-task-list {
+    padding-left: 20px;
+} 
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 11px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="planisuss"><strong>Planisuss</strong></h1>
+<p><em>Computer programming, Algorithms and Data str., Mod. 1 – Bachelor's in Artificial Intelligence, UniPv, UniMi, UniMib</em></p>
+<hr>
+<img src="file:///c:\Users\stefa\OneDrive - Università di Pavia\Documents - Copy\python\Planisuss\project\files\planisuss_logo.png" alt="Planisuss Logo" width="300" height="300"/>
+<p>Welcome to Planisuss... a simulation of an ecosystem where every creature makes decisions, forms alliances, and battles for survival, it contains three main species:</p>
+<ul>
+<li>
+<h2 id="vegetob"><strong>Vegetob</strong></h2>
+</li>
+</ul>
+<p>A vegetable species. Its density starts around 25 and they spontaneously grow on the ground with a max density of 200. They are also reduced each day because of the grazing effect of Erbasts in the cells, as Vegetob are the main source of food for the Erbasts providing them with an increase in energy.</p>
+<h2 id="animal-species"><strong>Animal Species:</strong></h2>
+<ul>
+<li>
+<h2 id="erbasts"><strong>Erbasts</strong></h2>
+</li>
+</ul>
+<p>A herbivore species, who wonder the land in search of food and safety.</p>
+<p>Their behavior is both strategic and adaptive. Erbasts constantly evaluate their surroundings, scoring neighboring cells based on several factors. They consider the presence of predators, the size of nearby groups, and food availability to decide their next move. When they sense the presence of danger from nearby Carviz (carnivores) they quickly change their course setting a preferred escape direction.</p>
+<p>They are also able to form social groups named Herds. Once an Erbast has joined a Herd they obtained several advantages:</p>
+<ul>
+<li>
+<p>Knowledge about past visited cells.</p>
+</li>
+<li>
+<p>Knowledge about predators.</p>
+</li>
+<li>
+<p>In a Herd you have multiple eyes hence you'll be able to identify dangers at a longer distance.</p>
+</li>
+<li>
+<h2 id="carviz"><strong>Carviz</strong></h2>
+</li>
+</ul>
+<p>A carnivore species, with a singular mission: <em>Hunting</em></p>
+<p>Carviz carefully scan the environment, focusing on areas with a high concentration of Erbasts. Their desirability scores prioritize cells where their next meal might be hiding.</p>
+<p>Carviz can also band together to form Prides. In a Pride, the group’s combined intelligence and coordinated movement allow them to track down prey more effectively. However, if individual instincts diverge too much from the group’s strategy, some Carviz might break off and choose a different path.</p>
+<h2 id="behind-the-simulation"><strong>Behind The Simulation</strong></h2>
+<p>We aim to explore the emergent behaviors driven by individual decisions and social dynamics.</p>
+<ul>
+<li>
+<p><strong>Dynamical Decision Making</strong>
+Each animal examines its local environment within a defined radius (the “neighborhood”). The score for each cell is calculated by combining factors like predator presence, group size (or potential for social grouping), food density, and current energy levels, of course we had to add an stochastic element in order to simulate more natural behaviors.</p>
+</li>
+<li>
+<p><strong>Social Interactions</strong>
+Herds and Prides are not only simple social groups, they are able to share experiences and resources (e.g. energy), thus creating a balance between individual choice and the collective.</p>
+</li>
+<li>
+<p><strong>Reproduction Dynamics</strong>
+When an animal reaches the end of its lifespan it is able to reproduce generating two new offsprings inheriting some traits from its parent. Their start a new life with their own energy and social attitude.</p>
+</li>
+<li>
+<p><strong>Resource Balances</strong>
+There is an ongoing balance between the growth and decay of the species, cooperation and survival that challenges our little species to strategize in order to thrive.</p>
+</li>
+</ul>
+<hr>
+<p>Try out Planisuss to test a new journey trough a small ecosystem where you can experience and test the strategic choices of our animals while they interact with each other and the environment.</p>
+
+            
+            
+        </body>
+        </html>

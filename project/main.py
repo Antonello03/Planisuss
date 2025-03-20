@@ -96,10 +96,10 @@ def initializePopulation(environment, type:str = "test1", nErb = 10, nCarv = 10)
             carv = Carviz((x, y), SocialAttitude = random.random())
             environment.add(carv)
 
-def simulation():
+def simulation(map_selection=False, dynamic=False):
     animation = Interface()
     # set_generation_type("random", 200, 50)
-    animation.run_simulation()
+    animation.run_simulation(map_selection=map_selection, dynamic=dynamic)
 
 if __name__ == "__main__":
-    simulation()
+    simulation(map_selection=False, dynamic=False)

@@ -42,11 +42,13 @@ class Interface():
     """
     IMAGE_PATHS = {
         'SOCIAL_ATT': {
+            'ZERO' : 'files//SocialAtt0.png',
             'LOW': "files//SocAtt1.png",
             'MEDIUM': "files//SocAtt2.png",
             'HIGH': "files//SocAtt3.png"
         },
         'ENERGY': {
+            'ZERO' : 'files//energy0.png',
             'LOW': "files//energy1.png",
             'MEDIUM': "files//energy2.png",
             'HIGH': "files//energy3.png"
@@ -122,16 +124,26 @@ class Interface():
         self.button_pressed_play = False
         self.button_pressed_pause = False
         self.stats_pressed = False
+        self.interval_val = 2000
 
-    def env_params(self):
+    def env_params(self, dynamic):
         # getting the parameters
         n_samples = 50
         seeds = np.random.randint(1, 100, size=n_samples)
-        thresholds = np.random.uniform(0.01, 0.2, size=n_samples)
-        octaves_p = np.random.randint(1, 10, size=n_samples)
-        persistences = np.random.uniform(0.2, 0.5, size=n_samples)
-        lacunarities = np.random.uniform(1.2, 1.8, size=n_samples)
-        scales = np.random.randint(40, 60, size=n_samples)
+        # Lower thresholds create more land regions
+        thresholds = np.random.uniform(0.4, 0.6, size=n_samples)
+        
+        # Higher octaves for more detailed coastlines
+        octaves_p = np.random.randint(30, 50, size=n_samples)
+        
+        # Lower persistence for more pronounced terrain features
+        persistences = np.random.uniform(0.3, 0.4, size=n_samples)
+        
+        # Higher lacunarity for more clustered island groups
+        lacunarities = np.random.uniform(1.9, 2.5, size=n_samples)
+        
+        # Use smaller scale for more islands
+        scales = np.random.randint(15, 25, size=n_samples)
 
         # inserting the parameters in the dictionary
         for i, seed in enumerate(seeds):
@@ -142,13 +154,14 @@ class Interface():
             scale = scales[i]
 
             self.WORLD_CONFIGS[f"map{i+1}"] = {
-                "path" : f"{self.MAP_PATHS}//map_random_seed{seed}.png",
+                "path" : f"{self.MAP_PATHS}//map_random_seed_{seed}.png",
                 "seed": seed,
                 "threshold": threshold,
                 "octaves": octaves,
                 "persistence": persistence,
                 "lacunarity": lacunarity,
-                "scale": scale
+                "scale": scale,
+                "dynamic": dynamic
             }
 
         self.save_to_file()
@@ -169,7 +182,8 @@ class Interface():
                 "octaves": int(config["octaves"]),
                 "persistence": float(config["persistence"]),
                 "lacunarity": float(config["lacunarity"]),
-                "scale": int(config["scale"])
+                "scale": int(config["scale"]),
+                "dynamic": config["dynamic"]
             }
 
         existing_configs = {}
@@ -198,10 +212,16 @@ class Interface():
         else:
             print(f"No map configurations found in {self.MAPS_FILE}")
 
-    def run_simulation(self):
-        plt.ion() 
-        self.start_menu()
-        plt.show(block=True)
+    def run_simulation(self, map_selection=False, dynamic=False):
+        if map_selection:
+            env_params = self.env_params(dynamic)
+            for map_name, config in env_params.items():
+                self.set_params_env(map_name)
+        else:
+            plt.ion() 
+            self.start_menu()
+            plt.show(block=True)
+
 
 
     def start_menu(self):
@@ -213,7 +233,7 @@ class Interface():
         background_img = Image.open("files//background.jpg")
         background_ax.imshow(background_img, aspect='auto', extent=(0, 1, 0, 1), alpha=0.5)
         
-        gs_menu = GridSpec(2, 3, figure=self.fig_menu, height_ratios=[5.5, 3], 
+        gs_menu = GridSpec(3, 3, figure=self.fig_menu, height_ratios=[5.5, 3, 3], 
                     width_ratios=[1.5, 1.5, 1.5], 
                     left=0.1, right=0.9, top=0.95, bottom=0.1, 
                     wspace=0.05, hspace=0.5)
@@ -229,6 +249,9 @@ class Interface():
         ax_map1 = self.fig_menu.add_subplot(gs_menu[1, 0])
         ax_map2 = self.fig_menu.add_subplot(gs_menu[1, 1])
         ax_map3 = self.fig_menu.add_subplot(gs_menu[1, 2])
+        ax_map4 = self.fig_menu.add_subplot(gs_menu[2, 0])
+        ax_map5 = self.fig_menu.add_subplot(gs_menu[2, 1])
+        ax_map6 = self.fig_menu.add_subplot(gs_menu[2, 2])
 
         map_names = list(self.CHOOSEN_MAPS.keys())
     
@@ -244,6 +267,19 @@ class Interface():
         ax_map3.imshow(Image.open(self.CHOOSEN_MAPS[map_names[2]]["path"]))
         ax_map3.axis('off')
 
+        ax_map4.set_title("Map 4")
+        ax_map4.imshow(Image.open(self.CHOOSEN_MAPS[map_names[3]]["path"]))
+        ax_map4.axis('off')
+
+        ax_map5.set_title("Map 5")
+        ax_map5.imshow(Image.open(self.CHOOSEN_MAPS[map_names[4]]["path"]))
+        ax_map5.axis('off')
+
+        ax_map6.set_title("Map 6")
+        ax_map6.imshow(Image.open(self.CHOOSEN_MAPS[map_names[5]]["path"]))
+        ax_map6.axis('off')
+
+
         self.fig_menu.canvas.mpl_connect('button_press_event', lambda event: self.choose_map(self.fig_menu, event))
     
         self.fig_menu.show()
@@ -251,7 +287,7 @@ class Interface():
     def choose_map(self, fig_menu, event):
         if event.inaxes not in fig_menu.get_axes(): return
 
-        _, title, map1, map2, map3 = list(fig_menu.get_axes())
+        _, title, map1, map2, map3, map4, map5, map6 = list(fig_menu.get_axes())
         
         if event.inaxes == title:
             print('Title clicked')
@@ -270,8 +306,23 @@ class Interface():
             map_name = list(self.CHOOSEN_MAPS.keys())[2]
             self.selected_map = map_name
             self.set_params_env(map_name)
+        elif event.inaxes == map4:
+            print("map4 clicked")
+            map_name = list(self.CHOOSEN_MAPS.keys())[3]
+            self.selected_map = map_name
+            self.set_params_env(map_name)
+        elif event.inaxes == map5:
+            print("map5 clicked")
+            map_name = list(self.CHOOSEN_MAPS.keys())[4]
+            self.selected_map = map_name
+            self.set_params_env(map_name)
+        elif event.inaxes == map6:
+            print("map6 clicked")
+            map_name = list(self.CHOOSEN_MAPS.keys())[5]
+            self.selected_map = map_name
+            self.set_params_env(map_name)
 
-    def set_params_env(self, map_name):
+    def set_params_env(self, map_name, select_map=False):
         if map_name in self.CHOOSEN_MAPS:
             config = self.CHOOSEN_MAPS[map_name]
             seed = config["seed"]
@@ -280,6 +331,7 @@ class Interface():
             persistence = config["persistence"]
             lacunarity = config["lacunarity"]
             scale = config["scale"]
+            dynamic = config["dynamic"]
         else:
             config = self.WORLD_CONFIGS[map_name]
             seed = config["seed"]
@@ -288,21 +340,29 @@ class Interface():
             persistence = config["persistence"]
             lacunarity = config["lacunarity"]
             scale = config["scale"]
+            dynamic = config["dynamic"]
+
+        if seed == 1:
+            print("Seed 1 setting dynamic=True")
+            dynamic = True
         
-        self.set_environment(threshold, seed, octaves, persistence, lacunarity, scale)
+        self.set_environment(threshold, seed, octaves, persistence, lacunarity, scale, dynamic, select_map)
 
     def set_generation_type(self, type, nErb = 50, nCarv = 50):
         self.generation_type = type
         self.numErb = nErb
         self.numCarv = nCarv
 
-    def set_environment(self, thr, seed, octv, per, lacu, scl):
-        environment = Environment(threshold=thr, seed=seed, octaves=octv, persistence=per, lacunarity=lacu, scale=scl, dynamic=True)
+    def set_environment(self, thr, seed, octv, per, lacu, scl, dynamic, select_map=False):
+        environment = Environment(threshold=thr, seed=seed, octaves=octv, persistence=per, lacunarity=lacu, scale=scl, dynamic=dynamic)
         self.env = environment
         self.grid = self.gridToRGB(environment.getGrid(), save=True, seed=seed)
+        if not select_map:
         # self.initialize_population(environment, type="random", nErb=100, nCarv=100)
-        self.initialize_population(environment, self.generation_type, self.numErb, self.numCarv)
-        self.create_map_and_start()
+            self.initialize_population(environment, self.generation_type, self.numErb, self.numCarv)
+            self.create_map_and_start()
+        else:
+            return
 
     def initialize_population(self, environment, type:str = "test1", nErb = 100, nCarv = 100):
         grid_shape = environment.getGrid().shape
@@ -454,6 +514,13 @@ class Interface():
 
         logger.debug("Drawing new elements")
         self.draw_elements(self.grid, self.currentDay)
+
+        # updating the interval of the animation for faster animation
+        if self.faster:
+            self.ani.event_source.interval = self.interval_val
+        else:
+            self.ani.event_source.interval = 2000
+        print(self.ani.event_source.interval)
 
         logger.debug(f"Frame {frameNum} complete, returning {2 + len(self.alive_animal_artists) + len(self.vegetob_artists)} artists")
         
@@ -868,7 +935,7 @@ class Interface():
         self.apply_filter(gradient_water, base_color_water, water_mask, grid_rgb)
         
         if save and seed is not None:
-            filepath = f"{self.MAP_PATHS}//map_random_seed{seed}.png"
+            filepath = f"{self.MAP_PATHS}//map_random_seed_{seed}.png"
         
             if not os.path.exists(filepath):
                 img = Image.fromarray(grid_rgb)
@@ -890,7 +957,7 @@ class Interface():
                 plt.pause(1)
             # self.img = self.ax_plot.imshow(self.grid, interpolation='nearest')
             self.ani = FuncAnimation(self._fig_map, self.update, frames=list(range(1, self.maxDay + 1)), fargs=(self.img,),
-                                interval=2000,
+                                interval=self.interval_val,
                                 blit=False,
                                 repeat=False,
                                 cache_frame_data=False)
@@ -928,35 +995,36 @@ class Interface():
     def faster_animation(self):
         if self.anim_running:
             self.ani.event_source.stop()
-            self.ani.event_source.interval = 1
+            self.interval_val = 1
+            self.ani.event_source.interval = self.interval_val
             self.ani.event_source.start()
             self.faster = True
     
     def normal_animation(self):
         if self.faster:
             self.ani.event_source.stop()
-            self.ani.event_source.interval = 2000
+            self.interval_val = 2000
+            self.ani.event_source.interval = self.interval_val
             self.ani.event_source.start()
             self.faster = False
 
     def show_cell_info(self, x, y):
         cell = self.env.getGrid()[x, y]
-        cell_density = cell.getVegetobDensity()
-        if cell_density < 25:
-            img_cell = Image.open(self.IMAGE_PATHS['CELL']['DIRT'])
-        elif 25 < cell_density < 50:
-            img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_LOW'])
-        elif 50 < cell_density < 100:
-            img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_MED'])
-        else:
-            img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_HIGH'])
-        
         fig = plt.figure(figsize=(8, 8), dpi=100)
         gs = GridSpec(2, 2, height_ratios=[3, 1], figure=fig)
         ax_img = fig.add_subplot(gs[0, 0])
-        
-        # ax = ShowCard.remove_text(self.ax[1])
         extent = [0, 1, 0, 1]
+        
+        if isinstance(cell, WaterCell):
+            print("Water cell clicked")
+            img_water = Image.open("files//water.png")
+            ax_img.imshow(img_water)
+            ax_img.set_title(f"Water Cell Clicled\nCell's coordinates: {x}, {y}", loc='center', weight='bold', fontsize=12)
+            ax_img.axis('off')
+            return
+        
+        cell_density = cell.getVegetobDensity()
+        img_cell = self._get_vegetob_image(cell_density)
         ax_img.imshow(img_cell, extent=extent)
         ax_img.text(0.01, -0.45, f"Cell's coordinates: {x}, {y}", ha='left')
         ax_img.text(0.01, -0.35, f"Cell's vegetob density: {cell.getVegetobDensity()}")
@@ -1059,7 +1127,7 @@ class Interface():
                 break
 
     def show_individuals(self, clicked_individual):
-        """Display individual's information in a new figure."""
+        """Display individual's information in a new figure"""
         dead_creature = False
         fig = plt.figure(figsize=(5,5), dpi=100)
         gs_stats = GridSpec(5, 2, figure=fig, 
@@ -1128,16 +1196,9 @@ class Interface():
         return ax_social_att
     
     def _get_social_att_image(self, attitude):
-        """
-        Return appropriate image path based on social attribute value.
-        
-        Args:
-            social attribute (int): Social Attribute level of the individual
-            
-        Returns:
-            str: Path to the appropriate social attribute image
-        """
-        if attitude < 30:
+        if attitude == 0:
+            return self.IMAGE_PATHS['SOCIAL_ATT']['ZERO']
+        elif attitude < 30:
             return self.IMAGE_PATHS['SOCIAL_ATT']['LOW']
         elif attitude < 100:
             return self.IMAGE_PATHS['SOCIAL_ATT']['MEDIUM']
@@ -1145,14 +1206,6 @@ class Interface():
     
 
     def create_energy_subplot(self, fig, gs_stats, individual_energy):
-        """
-        Create subplot showing energy level with appropriate image.
-        
-        Args:
-            fig: matplotlib figure
-            gs_stats: GridSpec object
-            individual_energy (float): Energy level of the individual
-        """
         energy_path = self._get_energy_image(individual_energy)
         ax_energy = fig.add_subplot(gs_stats[0, 1])
         energy = Image.open(energy_path).resize((2000, 700))
@@ -1164,20 +1217,25 @@ class Interface():
         return ax_energy
 
     def _get_energy_image(self, energy):
-        """
-        Return appropriate image path based on energy value.
-        
-        Args:
-            energy (float): Energy level of the individual
-            
-        Returns:
-            str: Path to the appropriate energy image
-        """
-        if energy < 30:
+        if energy == 0:
+            return self.IMAGE_PATHS['ENERGY']['ZERO']
+        elif energy < 30:
             return self.IMAGE_PATHS['ENERGY']['LOW']
         elif energy < 100:
             return self.IMAGE_PATHS['ENERGY']['MEDIUM']
         return self.IMAGE_PATHS['ENERGY']['HIGH']
+    
+    def _get_vegetob_image(self, cell_density):
+        if cell_density < 25:
+            img_cell = Image.open(self.IMAGE_PATHS['CELL']['DIRT'])
+        elif 25 < cell_density < 50:
+            img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_LOW'])
+        elif 50 < cell_density < 100:
+            img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_MED'])
+        else:
+            img_cell = Image.open(self.IMAGE_PATHS['CELL']['GRASS_HIGH'])
+        
+        return img_cell
 
 
 
