@@ -53,10 +53,10 @@
         "path": "files//maps//map_random_seed_1.png",
         "seed": 1,
         "threshold": 0.6,
-        "octaves": 6,
-        "persistence": 0.4271382255801315,
+        "octaves": 40,
+        "persistence": 0.6,
         "lacunarity": 1.761098206992989,
-        "scale": 43,
+        "scale": 40,
         "dynamic": false
     },
     "map7": {
