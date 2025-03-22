@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/debbd69a-ad99-43e6-bc63-65c7b88c34f6)# **Planisuss**
+**Planisuss**
 
 *Computer programming, Algorithms and Data str., Mod. 1 – Bachelor's in Artificial Intelligence, UniPv, UniMi, UniMib*
 
