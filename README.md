@@ -49,4 +49,4 @@ We aim to explore the emergent behaviors driven by individual decisions and soci
 ---
 Try out Planisuss to test a new journey trough a small ecosystem where you can experience and test the strategic choices of our animals while they interact with each other and the environment.
 
-**A small showcase:** https://youtu.be/bAX47wnpth4
+**A small showcase:** https://youtu.be/STb9Xr_yvms
