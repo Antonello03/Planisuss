@@ -624,6 +624,9 @@ class Interface():
                 self.draw_dead_animal(dead, day, remove=True)
 
     def draw_living_animal(self, animal):
+        """
+        Draw living animals as circles with the corresponding color
+        """
         shift_x, shift_y = np.random.uniform(-0.3, 0.3, 2)
         x, y = animal.getCoords()
         
