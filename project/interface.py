@@ -404,7 +404,7 @@ class Interface():
         self.numErb = nErb
         self.numCarv = nCarv
 
-    def initialize_population(self, environment, type:str = "test1", nErb = 100, nCarv = 100):
+    def initialize_population(self, environment, type:str = "random", nErb = 50, nCarv = 50):
         """
         Method for initializing the population, it filters out the water cells and has only some
         of the initial tests we did for testing some features of the simulation.
@@ -1026,7 +1026,7 @@ class Interface():
 
     def gridToRGB(self, grid, save=False, seed=None):
         """
-        This method translates the environment grid to an RGB matrix for visualizationù
+        This method translates the environment grid to an RGB matrix for visualization
         It will color the land cells with a brownish color and the water cells with a blue color
         At the same time a gradient will be applied to smooth the colors of the map
         """
@@ -1103,7 +1103,7 @@ class Interface():
         self.draw_elements(initial_grid, day=0)
         self.day_text.set_text(f'Day 0')
 
-        # plt.pause(0.1)
+        # plt.pause(1)
         return self.img
 
     def pause_animation(self):
